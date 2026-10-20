@@ -22,12 +22,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          # Activar `cache: npm` cuando exista package-lock.json en el repo.
+          cache: npm
 
       - name: Instalar dependencias
-        # `npm ci` en cuanto se suba package-lock.json (builds reproducibles).
-        run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+        run: npm ci
 
       - name: Comprobar tipos
         run: npm run typecheck

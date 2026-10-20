@@ -5,16 +5,17 @@
  *
  * Por qué un script y no un import: el paquete `stockfish` publica varias
  * variantes con nombres que cambian entre versiones
- * (p. ej. stockfish-17.1-lite-single-<hash>.js). Este script elige la
- * variante adecuada en lugar de fijar un nombre que se rompería al actualizar.
+ * (stockfish-17.1-lite-single-<hash>.js en v17, stockfish-19-lite-single.js
+ * en v19). Este script elige la variante adecuada en lugar de fijar un nombre
+ * que se rompería al actualizar.
  *
  * Preferencia: "lite" + "single".
  *  - single-threaded: no necesita SharedArrayBuffer, así que no exige las
  *    cabeceras COOP/COEP (GitHub Pages no permite configurarlas).
- *  - lite: red NNUE pequeña (~7 MB) en vez de la completa (~70+ MB).
+ *  - lite: red NNUE pequeña (~2 MB en v19) en vez de la completa (~100 MB).
  *    Algo menos de fuerza, carga mucho más rápida.
  */
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -60,6 +61,9 @@ if (!chosen || rank(chosen) === 99) {
   process.exit(1);
 }
 
+// Se vacía antes: al actualizar `stockfish` cambian los nombres y los
+// ficheros viejos acabarían también en dist/.
+rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outDir, { recursive: true });
 const js = basename(chosen);
 const wasm = js.replace(/\.js$/, '.wasm');

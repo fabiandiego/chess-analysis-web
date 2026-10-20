@@ -52,26 +52,28 @@ tests/               vitest.
    `/<repo>/` en Pages. No usar rutas absolutas `/engine/...`.
 4. `public/engine/` está en .gitignore: se genera desde node_modules, no se versiona.
 
-## Puntos NO verificados todavía (el código se escribió sin acceso al registro npm)
+## Verificación inicial (hecha, 2026-10-20)
 
-Comprobar en el primer `npm install && npm run build && npm run dev` y corregir si falla:
+Comprobado con `npm install && npm run build` + prueba en Chromium headless (build servido bajo
+`/chess-analysis-web/` y `npm run dev`), sin errores de consola:
 
-- [ ] Versiones de `package.json` (`chessground ^9.1.1`, `chess.js ^1.0.0`, `stockfish ^17.1.0`,
-      `vite ^6`, `vitest ^3`, `typescript ^6`). Ajustar a las últimas estables y generar `package-lock.json`.
-- [ ] Que `chessground` exporte `chessground/assets/*.css` y los tipos `chessground/api|types|draw`.
-- [ ] Nombres de ficheros del paquete `stockfish` (el script los busca por patrón; ver su salida).
-- [ ] Que el `.js` de Stockfish localice su `.wasm` con el mismo nombre base al cargarse como worker.
-      Si no, revisar el README del paquete (algunas versiones aceptan `script.js#ruta.wasm`).
-- [ ] `tests/game.test.ts` contra chess.js real (`Move.before`, `loadPgn`, cabeceras FEN en `pgn()`).
-- [ ] Prueba manual: arrastrar piezas, promoción, flechas, barra, cargar PGN/FEN, navegación con teclado.
+- [x] Versiones: `@lichess-org/chessground ^10.5`, `chess.js ^1.4`, `stockfish ^19.0.1`, `vite ^8.3`,
+      `vitest ^5`, `typescript ^7`. `package-lock.json` versionado; CI usa `npm ci`.
+- [x] El paquete npm `chessground` está **retirado** ("no longer supported"); Lichess publica ahora
+      `@lichess-org/chessground` (mismo repo y API, mismos subpaths `assets/*.css`, `api|types|draw`).
+- [x] Stockfish 19 publica `bin/stockfish-19-lite-single.{js,wasm}` (sin hash); el script lo elige
+      y vacía `public/engine/` antes de copiar para no arrastrar versiones viejas a `dist/`.
+- [x] El `.js` carga su `.wasm` hermano como worker sin necesidad de `#ruta.wasm`.
+- [x] `tests/game.test.ts` pasa contra chess.js real.
+- [x] Manual: arrastre, promoción (selector), flechas MultiPV, barra, FEN/PGN, copiar PGN con
+      cabeceras `SetUp`/`FEN`, teclado (←, Home, End), hash `#fen=` en la URL.
 
 ## Hoja de ruta sugerida
 
-1. Cerrar la lista de verificación anterior y subir `package-lock.json`.
-2. Árbol de variantes (en vez de truncar la línea principal) + exportar PGN con variantes.
-3. Análisis de partida completa: evaluar cada ply, gráfica de evaluación, detectar errores/omisiones.
-4. Guardar partidas en IndexedDB; importar desde la API pública de Lichess/Chess.com por usuario.
-5. **Motor propio** (ver abajo).
+1. Árbol de variantes (en vez de truncar la línea principal) + exportar PGN con variantes.
+2. Análisis de partida completa: evaluar cada ply, gráfica de evaluación, detectar errores/omisiones.
+3. Guardar partidas en IndexedDB; importar desde la API pública de Lichess/Chess.com por usuario.
+4. **Motor propio** (ver abajo).
 
 ## Motor propio
 
@@ -89,4 +91,4 @@ Comprobar en el primer `npm install && npm run build && npm run dev` y corregir 
 
 chessground y Stockfish son GPL-3.0, así que el proyecto se distribuye como **GPL-3.0-or-later**.
 Al publicar el sitio se distribuye Stockfish: mantener `STOCKFISH-LICENSE.txt` (lo copia el script)
-y añadir el texto completo de la GPL-3.0 en `LICENSE`.
+y el texto completo de la GPL-3.0 en `LICENSE`.
