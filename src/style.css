@@ -135,3 +135,25 @@ button, select, input, textarea { font: inherit; color: inherit; }
   background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
 }
 .promotion-box button:hover, .promotion-box button:focus { border-color: var(--accent); outline: none; }
+
+/* ------------ importar partidas ------------ */
+.import-form { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.import-form select, .import-form input {
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px;
+}
+.import-form input { flex: 1; min-width: 120px; }
+.import-form button {
+  background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 6px 14px; cursor: pointer;
+}
+.import-form button:disabled { opacity: 0.6; cursor: wait; }
+.import-msg { margin: 8px 0 0; }
+.import-list { list-style: none; margin: 8px 0 0; padding: 0; max-height: 320px; overflow-y: auto; }
+.import-item {
+  padding: 6px 8px; border-top: 1px solid var(--border); cursor: pointer;
+  border-left: 3px solid transparent;
+}
+.import-item:hover, .import-item:focus { background: var(--surface-2); outline: none; }
+.import-item.win { border-left-color: var(--pos); }
+.import-item.loss { border-left-color: var(--neg); }
+.import-item.draw { border-left-color: var(--muted); }
+.import-item .players { font-weight: 600; font-size: 14px; }

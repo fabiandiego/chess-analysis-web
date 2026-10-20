@@ -13,6 +13,7 @@ import { createStockfish, type AnalysisRequest, type UciEngine } from './engine/
 import { formatScore, toWhitePov, type InfoLine, type Score } from './engine/uci';
 import { EvalBar } from './ui/evalbar';
 import { choosePromotion } from './ui/promotion';
+import { mountImporter } from './ui/importer';
 
 // ---------------------------------------------------------------- estado
 
@@ -248,11 +249,42 @@ $('btn-copy-pgn').onclick = async () => {
   try { await navigator.clipboard.writeText(pgn); } catch { /* sin permiso: queda en el textarea */ }
 };
 
+// ---------------------------------------------------------------- importar partidas
+
+mountImporter($('importer'), {
+  prefs: { source: settings.importSource, username: settings.importUser },
+  onPrefsChange: (p) => {
+    settings.importSource = p.source;
+    settings.importUser = p.username;
+    saveSettings();
+  },
+  onOpen: (g, userColor) => {
+    try {
+      game.loadPgn(g.pgn);
+    } catch (err) {
+      ioError.hidden = false;
+      ioError.textContent = `No se pudo leer el PGN de ${g.url}: ${err instanceof Error ? err.message : err}`;
+      return;
+    }
+    game.goTo(0); // revisión desde el principio
+    if (userColor) orientation = userColor;
+    ioError.hidden = true;
+    sync();
+    $('board').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  },
+});
+
 // ---------------------------------------------------------------- ajustes
 
-interface Settings { engineOn: boolean; multiPv: number; depth: number }
+interface Settings {
+  engineOn: boolean;
+  multiPv: number;
+  depth: number;
+  importSource: 'lichess' | 'chesscom';
+  importUser: string;
+}
 function loadSettings(): Settings {
-  const def: Settings = { engineOn: true, multiPv: 3, depth: 0 };
+  const def: Settings = { engineOn: true, multiPv: 3, depth: 0, importSource: 'lichess', importUser: '' };
   try {
     return { ...def, ...JSON.parse(localStorage.getItem('chess-analysis:settings') ?? '{}') };
   } catch {

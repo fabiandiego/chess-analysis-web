@@ -35,6 +35,10 @@ src/
   engine/engine.ts   UciEngine: Web Worker + máquina de estados idle/searching/stopping.
   ui/evalbar.ts      Barra de evaluación (curva logística tipo Lichess, cp acotado a ±1000).
   ui/promotion.ts    Selector de pieza al promocionar.
+  ui/importer.ts     Panel "Mis partidas": busca por usuario y abre la partida (orienta el tablero al color del usuario).
+  import/lichess.ts  GET lichess.org/api/games/user/{u} (NDJSON, pgnInJson). parseLichessNdjson es puro.
+  import/chesscom.ts api.chess.com/pub/player/{u}/games/archives -> meses recientes EN SERIE (429 si se paraleliza).
+  import/types.ts    ImportedGame normalizado, validación de usuario, errores HTTP legibles.
 scripts/copy-engine.mjs  Elige la variante "lite-single" del paquete npm `stockfish` y escribe manifest.json.
 tests/               vitest.
 .github/workflows/ci.yml  typecheck + test + build + deploy a Pages en cada push a main.
@@ -52,25 +56,35 @@ tests/               vitest.
    `/<repo>/` en Pages. No usar rutas absolutas `/engine/...`.
 4. `public/engine/` está en .gitignore: se genera desde node_modules, no se versiona.
 
-## Puntos NO verificados todavía (el código se escribió sin acceso al registro npm)
+## Estado de verificación
 
-Comprobar en el primer `npm install && npm run build && npm run dev` y corregir si falla:
+El código se escribió en un entorno sin acceso a npm ni a lichess.org/chess.com. El primer CI
+(install + typecheck + test + build) pasó, lo que confirma:
 
-- [ ] Versiones de `package.json` (`chessground ^9.1.1`, `chess.js ^1.0.0`, `stockfish ^17.1.0`,
-      `vite ^6`, `vitest ^3`, `typescript ^6`). Ajustar a las últimas estables y generar `package-lock.json`.
-- [ ] Que `chessground` exporte `chessground/assets/*.css` y los tipos `chessground/api|types|draw`.
-- [ ] Nombres de ficheros del paquete `stockfish` (el script los busca por patrón; ver su salida).
+- [x] Las versiones de `package.json` resuelven e instalan.
+- [x] chessground exporta `assets/*.css` y los tipos `api|types|draw`.
+- [x] `copy-engine.mjs` encuentra Stockfish y el motor llega a `dist/engine/`.
+- [x] `tests/game.test.ts` pasa contra chess.js real.
+
+Pendiente (requiere navegador real):
+
+- [ ] Generar y subir `package-lock.json`; cambiar el CI a `npm ci` con `cache: npm`.
 - [ ] Que el `.js` de Stockfish localice su `.wasm` con el mismo nombre base al cargarse como worker.
       Si no, revisar el README del paquete (algunas versiones aceptan `script.js#ruta.wasm`).
-- [ ] `tests/game.test.ts` contra chess.js real (`Move.before`, `loadPgn`, cabeceras FEN en `pgn()`).
 - [ ] Prueba manual: arrastrar piezas, promoción, flechas, barra, cargar PGN/FEN, navegación con teclado.
+- [ ] Importación: confirmar que Lichess y Chess.com responden con CORS desde `*.github.io` y que los
+      campos JSON reales coinciden con los usados (`players.*.user.name`, `winner`, `status`, `pgn`;
+      `white.result`, `time_class`, `rules`, `end_time`). Si Chess.com no permite CORS, la alternativa
+      sin backend es pegar el PGN manualmente; con backend, un proxy mínimo (p. ej. un Worker gratuito).
+- [ ] Chess.com pide un User-Agent identificable; desde el navegador no se puede fijar. Vigilar 403/429.
 
 ## Hoja de ruta sugerida
 
 1. Cerrar la lista de verificación anterior y subir `package-lock.json`.
 2. Árbol de variantes (en vez de truncar la línea principal) + exportar PGN con variantes.
 3. Análisis de partida completa: evaluar cada ply, gráfica de evaluación, detectar errores/omisiones.
-4. Guardar partidas en IndexedDB; importar desde la API pública de Lichess/Chess.com por usuario.
+4. ~~Importar desde Lichess/Chess.com~~ (hecho, v0.2). Siguiente: caché en IndexedDB, filtros por ritmo/fecha,
+   paginación (Lichess `until`, meses anteriores de Chess.com).
 5. **Motor propio** (ver abajo).
 
 ## Motor propio
