@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <title>Análisis de ajedrez</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♞</text></svg>" />
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>♞ Análisis</h1>
+      <span id="engine-name" class="muted">Cargando motor…</span>
+    </header>
+
+    <main class="layout">
+      <section class="board-area">
+        <div id="evalbar"></div>
+        <div class="board-wrap">
+          <div id="board" class="cg-wrap"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="controls" role="toolbar" aria-label="Navegación">
+          <button id="btn-start" title="Inicio (Home)">⏮</button>
+          <button id="btn-prev" title="Anterior (←)">◀</button>
+          <button id="btn-next" title="Siguiente (→)">▶</button>
+          <button id="btn-end" title="Final (End)">⏭</button>
+          <button id="btn-flip" title="Girar tablero (F)">⇅</button>
+        </div>
+
+        <div class="engine-box">
+          <div class="engine-head">
+            <label class="switch">
+              <input id="engine-toggle" type="checkbox" checked />
+              <span>Motor</span>
+            </label>
+            <label>Líneas
+              <select id="multipv">
+                <option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option>
+              </select>
+            </label>
+            <label>Prof.
+              <select id="depth">
+                <option value="0" selected>∞</option>
+                <option value="16">16</option><option value="20">20</option>
+                <option value="24">24</option><option value="30">30</option>
+              </select>
+            </label>
+          </div>
+          <div id="engine-stats" class="muted small">—</div>
+          <ol id="pv-lines" class="pv-lines"></ol>
+        </div>
+
+        <div id="status" class="status" hidden></div>
+
+        <div id="moves" class="moves" aria-label="Movimientos"></div>
+
+        <details class="io">
+          <summary>Cargar / exportar</summary>
+          <label for="fen-input">FEN</label>
+          <div class="row">
+            <input id="fen-input" type="text" spellcheck="false" autocomplete="off" />
+            <button id="btn-fen">Cargar</button>
+          </div>
+          <label for="pgn-input">PGN</label>
+          <textarea id="pgn-input" rows="5" spellcheck="false" placeholder="Pega aquí un PGN"></textarea>
+          <div class="row">
+            <button id="btn-pgn">Cargar PGN</button>
+            <button id="btn-copy-pgn">Copiar PGN</button>
+            <button id="btn-new">Nueva partida</button>
+          </div>
+          <p id="io-error" class="error" hidden></p>
+        </details>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
