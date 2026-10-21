@@ -1,7 +1,7 @@
 import { Chessground } from 'chessground';
 import type { Api } from 'chessground/api';
 import type { Key } from 'chessground/types';
-import type { DrawShape } from 'chessground/draw';
+import type { DrawBrushes, DrawShape } from 'chessground/draw';
 
 import 'chessground/assets/chessground.base.css';
 import 'chessground/assets/chessground.brown.css';
@@ -47,11 +47,13 @@ const cg: Api = Chessground($('board'), {
   highlight: { lastMove: true, check: true },
   animation: { duration: 150 },
   drawable: {
+    // El tipo DrawBrushes exige todos los pinceles de serie, pero chessground hace
+    // deepMerge de la configuración (config.ts), así que basta con añadir los nuevos.
     brushes: {
       best: { key: 'eb', color: ARROWS[0].color, opacity: 0.95, lineWidth: 14 },
       second: { key: 'e2', color: ARROWS[1].color, opacity: 0.8, lineWidth: 10 },
       third: { key: 'e3', color: ARROWS[2].color, opacity: 0.75, lineWidth: 8 },
-    },
+    } as Partial<DrawBrushes> as DrawBrushes,
   },
 });
 
