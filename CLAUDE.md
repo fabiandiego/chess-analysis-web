@@ -21,6 +21,7 @@ npm run typecheck  # tsc --noEmit
 npm test           # vitest (tests/*.test.ts, entorno node)
 npm run build      # copy-engine + typecheck + vite build -> dist/
 npm run preview    # sirve dist/ para probar el build
+npm run e2e        # prueba de humo en Chromium (móvil + escritorio) sobre dist/; requiere build previo
 ```
 
 Antes de dar una tarea por terminada: `npm run typecheck && npm test && npm run build`.
@@ -39,6 +40,7 @@ src/
   import/lichess.ts  GET lichess.org/api/games/user/{u} (NDJSON, pgnInJson). parseLichessNdjson es puro.
   import/chesscom.ts api.chess.com/pub/player/{u}/games/archives -> meses recientes EN SERIE (429 si se paraleliza).
   import/types.ts    ImportedGame normalizado, validación de usuario, errores HTTP legibles.
+scripts/e2e-smoke.mjs    Playwright sobre dist/: sin scroll horizontal, Stockfish da líneas, sin errores JS.
 scripts/copy-engine.mjs  Elige la variante "lite-single" del paquete npm `stockfish` y escribe manifest.json.
 tests/               vitest.
 .github/workflows/ci.yml  typecheck + test + build + deploy a Pages en cada push a main.
@@ -55,6 +57,10 @@ tests/               vitest.
 3. **Rutas relativas** (`base: './'`, `new URL(..., document.baseURI)`): el sitio vive bajo
    `/<repo>/` en Pages. No usar rutas absolutas `/engine/...`.
 4. `public/engine/` está en .gitignore: se genera desde node_modules, no se versiona.
+5. **Móvil sin desbordamiento horizontal**: columnas con `minmax(0, …)` / `min-width: 0` y el override
+   de `coords.files` en style.css (chessground.base.css las desplaza 24 px fuera del tablero).
+   `npm run e2e` lo comprueba en iPhone SE (320 px) y Pixel 7.
+6. Colores de flechas en `ARROWS` (main.ts): el mismo color marca la línea en el panel. Mantenerlos sincronizados.
 
 ## Estado de verificación
 
@@ -69,14 +75,19 @@ El código se escribió en un entorno sin acceso a npm ni a lichess.org/chess.co
 Pendiente (requiere navegador real):
 
 - [ ] Generar y subir `package-lock.json`; cambiar el CI a `npm ci` con `cache: npm`.
-- [ ] Que el `.js` de Stockfish localice su `.wasm` con el mismo nombre base al cargarse como worker.
-      Si no, revisar el README del paquete (algunas versiones aceptan `script.js#ruta.wasm`).
-- [ ] Prueba manual: arrastrar piezas, promoción, flechas, barra, cargar PGN/FEN, navegación con teclado.
+- [x] Stockfish 17.1 lite-single carga su `.wasm` como worker y analiza (probado en Chromium, móvil y escritorio).
+- [ ] Prueba manual en un teléfono real (Safari iOS y Chrome Android): arrastrar piezas, promoción.
 - [ ] Importación: confirmar que Lichess y Chess.com responden con CORS desde `*.github.io` y que los
       campos JSON reales coinciden con los usados (`players.*.user.name`, `winner`, `status`, `pgn`;
       `white.result`, `time_class`, `rules`, `end_time`). Si Chess.com no permite CORS, la alternativa
       sin backend es pegar el PGN manualmente; con backend, un proxy mínimo (p. ej. un Worker gratuito).
 - [ ] Chess.com pide un User-Agent identificable; desde el navegador no se puede fijar. Vigilar 403/429.
+
+## Rendimiento en móvil
+
+- En pantallas táctiles la profundidad por defecto es 20 (no infinita) y el motor se para con la pestaña oculta.
+- Stockfish 17.1 lite pesa ~7,3 MB de `.wasm`. El paquete `stockfish` 19 trae un lite-single de ~1,7 MB
+  (red más pequeña: carga más rápida, algo más débil). Candidato si la carga en móvil resulta lenta.
 
 ## Hoja de ruta sugerida
 

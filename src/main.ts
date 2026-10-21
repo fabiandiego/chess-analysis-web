@@ -27,12 +27,32 @@ let orientation: 'white' | 'black' = 'white';
 let lines = new Map<number, InfoLine>();
 let analysisFen = '';
 
+const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
+/**
+ * Colores de las flechas del motor (1ª, 2ª y 3ª mejor jugada). Los mismos
+ * colores marcan cada línea en el panel, para relacionar flecha <-> línea.
+ * Opacidad alta y trazo grueso: los pinceles "pale" de serie apenas se ven.
+ */
+const ARROWS = [
+  { brush: 'best', color: '#15a34a' },
+  { brush: 'second', color: '#2563eb' },
+  { brush: 'third', color: '#d97706' },
+] as const;
+
 const evalBar = new EvalBar($('evalbar'));
 const cg: Api = Chessground($('board'), {
   movable: { free: false, showDests: true, events: { after: onUserMove } },
   draggable: { showGhost: true },
   highlight: { lastMove: true, check: true },
   animation: { duration: 150 },
+  drawable: {
+    brushes: {
+      best: { key: 'eb', color: ARROWS[0].color, opacity: 0.95, lineWidth: 14 },
+      second: { key: 'e2', color: ARROWS[1].color, opacity: 0.8, lineWidth: 10 },
+      third: { key: 'e3', color: ARROWS[2].color, opacity: 0.75, lineWidth: 8 },
+    },
+  },
 });
 
 // ---------------------------------------------------------------- tablero
@@ -120,9 +140,12 @@ function renderAnalysis(): void {
       const li = document.createElement('li');
       const score = toWhitePov(l.score, stm);
       const san = game.pvToSan(l.pv);
-      li.innerHTML = `<span class="score ${scoreClass(score)}">${formatScore(score)}</span><span class="pv"></span>`;
+      const dot = ARROWS[l.multipv - 1]?.color ?? 'transparent';
+      li.innerHTML =
+        `<span class="dot" style="background:${dot}"></span>` +
+        `<span class="score ${scoreClass(score)}">${formatScore(score)}</span><span class="pv"></span>`;
       li.querySelector('.pv')!.textContent = numberedLine(san, game.fen);
-      li.title = 'Clic: jugar el primer movimiento';
+      li.title = 'Jugar el primer movimiento de esta línea';
       li.addEventListener('click', () => {
         if (l.pv[0] && game.playUci(l.pv[0])) sync();
       });
@@ -130,12 +153,18 @@ function renderAnalysis(): void {
     }),
   );
 
-  // Flechas: mejor jugada en azul, alternativas en gris.
-  const shapes: DrawShape[] = sorted.slice(0, 3).flatMap((l, i) => {
-    const mv = l.pv[0];
-    if (!mv) return [];
-    return [{ orig: mv.slice(0, 2) as Key, dest: mv.slice(2, 4) as Key, brush: i === 0 ? 'paleBlue' : 'paleGrey' }];
-  });
+  // Flechas: hasta 3, con la evaluación escrita en la punta.
+  // Se dibuja de la peor a la mejor para que la mejor quede encima.
+  const shapes: DrawShape[] = sorted
+    .slice(0, ARROWS.length)
+    .flatMap((l) => {
+      const mv = l.pv[0];
+      const style = ARROWS[l.multipv - 1];
+      if (!mv || !style) return [];
+      const label = { text: formatScore(toWhitePov(l.score, stm)).replace(/^\+/, ''), fill: style.color };
+      return [{ orig: mv.slice(0, 2) as Key, dest: mv.slice(2, 4) as Key, brush: style.brush, label }];
+    })
+    .reverse();
   cg.setAutoShapes(settings.engineOn ? shapes : []);
 }
 
@@ -242,7 +271,24 @@ function guarded(fn: () => void): void {
 }
 $('btn-fen').onclick = () => guarded(() => game.loadFen(($('fen-input') as HTMLInputElement).value));
 $('btn-pgn').onclick = () => guarded(() => game.loadPgn(($('pgn-input') as HTMLTextAreaElement).value));
-$('btn-new').onclick = () => guarded(() => game.loadFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'));
+$('btn-reset').onclick = () => {
+  orientation = 'white';
+  setBanner(null);
+  guarded(() => game.loadFen(START_FEN)); // guarded() ya llama a sync()
+};
+
+/** Aviso "Analizando: A vs B" cuando se abre una partida importada. */
+function setBanner(text: string | null, href?: string): void {
+  const el = $('game-banner');
+  el.hidden = !text;
+  el.replaceChildren();
+  if (!text) return;
+  el.append(text);
+  if (href) {
+    const a = Object.assign(document.createElement('a'), { href, target: '_blank', rel: 'noopener', textContent: 'ver original ↗' });
+    el.append(' · ', a);
+  }
+}
 $('btn-copy-pgn').onclick = async () => {
   const pgn = game.toPgn();
   ($('pgn-input') as HTMLTextAreaElement).value = pgn;
@@ -269,8 +315,9 @@ mountImporter($('importer'), {
     game.goTo(0); // revisión desde el principio
     if (userColor) orientation = userColor;
     ioError.hidden = true;
+    setBanner(`${g.white} vs ${g.black} (${g.result}) · usa ▶ para avanzar`, g.url || undefined);
     sync();
-    $('board').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   },
 });
 
@@ -284,7 +331,10 @@ interface Settings {
   importUser: string;
 }
 function loadSettings(): Settings {
-  const def: Settings = { engineOn: true, multiPv: 3, depth: 0, importSource: 'lichess', importUser: '' };
+  // En móvil (pantalla táctil) se limita la profundidad por defecto: el análisis
+  // infinito mantiene un núcleo al 100 % y calienta el teléfono / gasta batería.
+  const touch = matchMedia('(pointer: coarse)').matches;
+  const def: Settings = { engineOn: true, multiPv: 3, depth: touch ? 20 : 0, importSource: 'lichess', importUser: '' };
   try {
     return { ...def, ...JSON.parse(localStorage.getItem('chess-analysis:settings') ?? '{}') };
   } catch {
@@ -302,6 +352,13 @@ if (hashFen) {
   try { game.loadFen(hashFen); } catch { /* FEN de la URL inválido: posición inicial */ }
 }
 sync();
+
+// Pestaña en segundo plano: parar el motor (batería). Al volver, reanudar.
+document.addEventListener('visibilitychange', () => {
+  if (!engine) return;
+  if (document.hidden) void engine.stop();
+  else restartAnalysis();
+});
 
 createStockfish({ onInfo, hashMb: 32 })
   .then(async (e) => {
