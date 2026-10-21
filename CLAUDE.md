@@ -141,16 +141,22 @@ Pendiente:
   headless dio ~40 % menos nps que 17.1 lite (medida orientativa, no de fuerza). Para volver a 17.1:
   `stockfish@~17.1.0`, el script de copia sirve igual.
 
-## Hoja de ruta sugerida
+## Versión 2 — plan (rama `v2`)
 
-1. Árbol de variantes (en vez de truncar la línea principal) + exportar PGN con variantes.
-2. Análisis de partida completa: evaluar cada ply en segundo plano (hoy solo se valoran las jugadas
-   visitadas), gráfica de evaluación, resumen de precisión por jugador. La clasificación ya existe
-   (`review/classify.ts`); faltan "brillante", "gran jugada" y "oportunidad perdida", que requieren
-   detectar sacrificios y jugadas únicas.
-3. ~~Importar desde Lichess/Chess.com~~ (hecho, v1.0.0). Siguiente: caché en IndexedDB, filtros por ritmo/fecha,
-   paginación (Lichess `until`, meses anteriores de Chess.com).
-4. **Motor propio** (ver abajo).
+Candidatos, sacados de la hoja de ruta de v1. Orden propuesto; confirmar alcance con el autor antes de empezar cada uno.
+
+1. **Árbol de variantes**: jugar otra jugada en mitad de la partida crea una variante en vez de truncar
+   la línea; navegar y promover variantes; exportar PGN con variantes. Afecta a `game.ts` (hoy línea +
+   cursor), a la lista de jugadas y a `fensToCursor`/`positions` (aperturas y valoración).
+2. **Análisis de partida completa**: valorar todas las jugadas en segundo plano (hoy solo las visitadas),
+   gráfica de evaluación, precisión por jugador. `review/classify.ts` ya existe; faltan "brillante",
+   "gran jugada" y "oportunidad perdida" (detectar sacrificios y jugadas únicas).
+3. **Partidas guardadas**: caché en IndexedDB; importación con filtros por ritmo/fecha y paginación
+   (Lichess `until`, meses anteriores de Chess.com).
+4. **Motor propio** (ver abajo), con selector de motor y partidas motor contra motor.
+
+Deuda que conviene saldar en v2 (ver "Pendiente" arriba): acciones de GitHub con Node 24, CORS de las
+APIs de importación, revisión nativa de en/ru.
 
 ## Motor propio
 

@@ -2,7 +2,8 @@ name: CI y despliegue
 
 on:
   push:
-    branches: [main]
+    # v2: CI en cada push, sin desplegar (los pasos de Pages exigen refs/heads/main).
+    branches: [main, v2]
   pull_request:
   workflow_dispatch:
 

@@ -3,6 +3,10 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); versiones con
 [SemVer](https://semver.org/lang/es/).
 
+## [Sin publicar] — 2.0.0
+
+_En desarrollo en la rama `v2`._
+
 ## [1.0.0] — 2026-10-21
 
 Primera versión publicada en https://fabiandiego.github.io/chess-analysis-web/.
@@ -43,4 +47,5 @@ Primera versión publicada en https://fabiandiego.github.io/chess-analysis-web/.
 - Solo se valoran las jugadas visitadas; no hay "brillante", "gran jugada" ni "oportunidad perdida".
 - CORS de Lichess/Chess.com sin verificar desde `*.github.io`; traducciones en/ru sin revisión nativa.
 
+[Sin publicar]: https://github.com/fabiandiego/chess-analysis-web/compare/v1.0.0...v2
 [1.0.0]: https://github.com/fabiandiego/chess-analysis-web/releases/tag/v1.0.0
