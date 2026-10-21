@@ -48,6 +48,21 @@ export const es = {
     threefold: 'Tablas por triple repetición',
     fiftyMoves: 'Tablas (regla de 50 movimientos)',
   },
+  review: {
+    title: 'Valoración de la última jugada (criterio de chess.com)',
+    classes: {
+      book: 'Libro', best: 'Mejor', excellent: 'Excelente', good: 'Buena',
+      inaccuracy: 'Imprecisión', mistake: 'Error', blunder: 'Error grave',
+    },
+    verdict: {
+      book: 'es una jugada de libro', best: 'es la mejor jugada', excellent: 'es excelente', good: 'es buena',
+      inaccuracy: 'es una imprecisión', mistake: 'es un error', blunder: 'es un error grave',
+    },
+    bestWas: (san: string) => `Mejor era ${san}`,
+    evalChange: (before: string, after: string) => `Evaluación ${before} → ${after}`,
+    pending: (san: string) => `Valorando ${san}…`,
+    engineOff: 'Activa el motor para valorar las jugadas.',
+  },
   promotion: { label: 'Elige pieza de promoción', q: 'Dama', r: 'Torre', b: 'Alfil', n: 'Caballo' },
   io: {
     summary: 'Pegar FEN o PGN / exportar',

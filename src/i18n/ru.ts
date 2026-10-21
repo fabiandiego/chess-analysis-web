@@ -50,6 +50,21 @@ export const ru: Messages = {
     threefold: 'Ничья: троекратное повторение',
     fiftyMoves: 'Ничья (правило 50 ходов)',
   },
+  review: {
+    title: 'Оценка последнего хода (по критериям chess.com)',
+    classes: {
+      book: 'Теория', best: 'Лучший', excellent: 'Отлично', good: 'Хорошо',
+      inaccuracy: 'Неточность', mistake: 'Ошибка', blunder: 'Зевок',
+    },
+    verdict: {
+      book: '— теоретический ход', best: '— лучший ход', excellent: '— отличный ход', good: '— хороший ход',
+      inaccuracy: '— неточность', mistake: '— ошибка', blunder: '— зевок',
+    },
+    bestWas: (san) => `Лучше было ${san}`,
+    evalChange: (before, after) => `Оценка ${before} → ${after}`,
+    pending: (san) => `Оцениваю ${san}…`,
+    engineOff: 'Включите движок, чтобы оценивать ходы.',
+  },
   promotion: { label: 'Выберите фигуру для превращения', q: 'Ферзь', r: 'Ладья', b: 'Слон', n: 'Конь' },
   io: {
     summary: 'Вставить FEN или PGN / экспорт',

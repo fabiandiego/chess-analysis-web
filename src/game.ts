@@ -65,6 +65,14 @@ export class Game {
   get ply(): number { return this.cursor; }
   get length(): number { return this.plies.length; }
   get moves(): readonly Ply[] { return this.plies; }
+  /** Todas las posiciones de la línea, sin depender del cursor (índice = ply). */
+  get positions(): string[] {
+    return [this.startFen, ...this.plies.map((p) => p.fenAfter)];
+  }
+  /** Posición anterior a la jugada del cursor; null en el ply 0. */
+  get prevFen(): string | null {
+    return this.cursor === 0 ? null : this.cursor === 1 ? this.startFen : this.plies[this.cursor - 2]!.fenAfter;
+  }
   /** Posiciones desde el inicio hasta el cursor, ambos incluidos (índice = ply). */
   get fensToCursor(): string[] {
     return [this.startFen, ...this.plies.slice(0, this.cursor).map((p) => p.fenAfter)];
@@ -85,12 +93,14 @@ export class Game {
   }
 
   status(): GameStatus | null {
-    if (this.pos.isCheckmate()) return this.turn === 'w' ? 'blackMates' : 'whiteMates';
-    if (this.pos.isStalemate()) return 'stalemate';
-    if (this.pos.isInsufficientMaterial()) return 'insufficient';
-    if (this.pos.isThreefoldRepetition()) return 'threefold';
-    if (this.pos.isDraw()) return 'fiftyMoves';
-    return null;
+    return statusOf(this.pos);
+  }
+
+  /** Fin de partida en la última posición de la línea (es el único sitio donde puede haberlo). */
+  endStatus(): GameStatus | null {
+    if (this.cursor === this.plies.length) return this.status();
+    const last = this.plies[this.plies.length - 1];
+    return last ? statusOf(new Chess(last.fenAfter)) : this.status();
   }
 
   /** Destinos legales por casilla, en el formato que espera chessground. */
@@ -162,6 +172,24 @@ export class Game {
     const c = new Chess(this.startFen);
     for (const p of this.plies) c.move(p.san);
     return c.pgn();
+  }
+}
+
+function statusOf(pos: Chess): GameStatus | null {
+  if (pos.isCheckmate()) return pos.turn() === 'w' ? 'blackMates' : 'whiteMates';
+  if (pos.isStalemate()) return 'stalemate';
+  if (pos.isInsufficientMaterial()) return 'insufficient';
+  if (pos.isThreefoldRepetition()) return 'threefold';
+  if (pos.isDraw()) return 'fiftyMoves';
+  return null;
+}
+
+/** SAN de una jugada UCI desde una posición cualquiera; null si es ilegal. */
+export function uciToSan(fen: string, uci: string): string | null {
+  try {
+    return new Chess(fen).move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] }).san;
+  } catch {
+    return null;
   }
 }
 

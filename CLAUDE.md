@@ -41,6 +41,8 @@ src/
   ui/promotion.ts    Selector de pieza al promocionar.
   openings/openings.ts  identifyOpening(): ECO + nombre por posición (transposiciones incluidas),
                      la más profunda de la línea hasta el cursor. Libro cargado bajo demanda (chunk aparte).
+  review/classify.ts classifyMove(): mejor / excelente / buena / imprecisión / error / error grave por
+                     puntos esperados perdidos (umbrales de chess.com, curva de Lichess). Puro. "Libro" lo decide main.ts.
   i18n/es.ts         Textos de la UI; fuente de verdad de las claves (`Messages`). en.ts y ru.ts se tipan con ella.
   i18n/i18n.ts       `t` (binding vivo), setLang, detectLang (guardado > navegador > es), lookup para `data-i18n`.
   ui/importer.ts     Panel "Mis partidas": busca por usuario y abre la partida (orienta el tablero al color del usuario).
@@ -50,7 +52,7 @@ src/
 scripts/e2e-smoke.mjs    Playwright sobre dist/: sin scroll horizontal, Stockfish da líneas, sin errores JS.
 scripts/copy-engine.mjs  Elige la variante "lite-single" del paquete npm `stockfish` y escribe manifest.json.
 scripts/build-openings.mjs  data/openings/*.tsv (Lichess, CC0) -> src/openings/book.json (generado, no versionado).
-tests/               vitest: game, uci, openings, import, i18n.
+tests/               vitest: game, uci, openings, import, i18n, classify.
 .github/workflows/ci.yml  typecheck + test + build + e2e en cada push y PR; deploy a Pages solo desde main.
 ```
 
@@ -79,6 +81,15 @@ tests/               vitest: game, uci, openings, import, i18n.
    (`GameStatus`, `ImportError.code`) y la UI los traduce. Al añadir un texto: clave en es.ts → tsc
    obliga a ponerla en en.ts y ru.ts; tests/i18n.test.ts comprueba claves del HTML y paridad.
    Al cambiar de idioma no se reinicia el análisis: `applyLanguage()` repinta lo que ya está en pantalla.
+10. **Valoración de jugadas** (main.ts): `evals` guarda la mejor evaluación multipv 1 *exacta* por
+   `positionKey`, venga de donde venga. `nextRequest()` decide qué calcula el motor: si a la posición
+   ANTERIOR al cursor le falta profundidad (`REVIEW_DEPTH` = 18), primero una búsqueda corta de esa
+   posición y, en `onBestMove`, el análisis en vivo de la actual (misma cola: invariante 1 intacta).
+   Toda búsqueda terminada marca su posición en `reviewDone` aunque no llegue a 18 (mate visto antes o
+   selector de profundidad por debajo); sin eso la valoración se quedaría "pendiente" para siempre.
+   Con profundidad 14 Stockfish lite no veía mates con sacrificio y salían valoraciones incoherentes.
+   Símbolos y colores en `CLASS_STYLE`; en `customSvg` de chessground la casilla va de 0 a 100 desde su
+   esquina superior izquierda (no desde el centro).
 
 ## Estado de verificación
 
@@ -95,7 +106,8 @@ y `npm run dev`), sin errores de consola:
 - [x] Los tests (`game`, `uci`, `openings`, `import`, `i18n`) pasan contra chess.js real.
 - [x] Manual: arrastre, promoción (selector), flechas MultiPV, barra, FEN/PGN, copiar PGN con
       cabeceras `SetUp`/`FEN`, teclado (←, Home, End), hash `#fen=` en la URL, nombre de apertura,
-      cambio de idioma es/en/ru (persiste al recargar; sin restos en español en ru).
+      cambio de idioma es/en/ru (persiste al recargar; sin restos en español en ru), valoración de
+      jugadas (Opera de Morphy: 9…b5 error, 15.Bxd7+ mejor; 3…Nf6?? en el mate del pastor, error grave).
 
 Pendiente:
 
@@ -120,7 +132,10 @@ Pendiente:
 ## Hoja de ruta sugerida
 
 1. Árbol de variantes (en vez de truncar la línea principal) + exportar PGN con variantes.
-2. Análisis de partida completa: evaluar cada ply, gráfica de evaluación, detectar errores/omisiones.
+2. Análisis de partida completa: evaluar cada ply en segundo plano (hoy solo se valoran las jugadas
+   visitadas), gráfica de evaluación, resumen de precisión por jugador. La clasificación ya existe
+   (`review/classify.ts`); faltan "brillante", "gran jugada" y "oportunidad perdida", que requieren
+   detectar sacrificios y jugadas únicas.
 3. ~~Importar desde Lichess/Chess.com~~ (hecho, v0.2). Siguiente: caché en IndexedDB, filtros por ritmo/fecha,
    paginación (Lichess `until`, meses anteriores de Chess.com).
 4. **Motor propio** (ver abajo).

@@ -15,6 +15,10 @@ Sin cuentas, sin servidor, sin suscripción.
 - Análisis en vivo con Stockfish 19 (WASM, un hilo) y 1–5 líneas (MultiPV), profundidad fija o infinita.
 - Barra de evaluación y flechas de colores (verde, azul y naranja) con la evaluación en la punta;
   cada línea del panel lleva el color de su flecha. Tocar una línea juega su primer movimiento.
+- **Valoración de la última jugada** como en la revisión de chess.com: libro, mejor, excelente, buena,
+  imprecisión, error o error grave, con insignia en el tablero, la mejor alternativa y la evaluación
+  antes/después; las jugadas ya valoradas quedan marcadas en la lista. Usa los umbrales de "puntos
+  esperados" de chess.com con la curva de Lichess (chess.com ajusta la curva al rating, aquí no se conoce).
 - **Nombre de la apertura y código ECO** (≈3 900 líneas de la base de datos de Lichess). Se reconoce
   por posición, así que detecta transposiciones; fuera de teoría se mantiene el último nombre, atenuado.
 - Interfaz en **español, inglés o ruso** (selector en la cabecera; por defecto, el idioma del navegador).

@@ -43,6 +43,21 @@ export const en: Messages = {
     threefold: 'Draw by threefold repetition',
     fiftyMoves: 'Draw (50-move rule)',
   },
+  review: {
+    title: 'Last move rating (chess.com criteria)',
+    classes: {
+      book: 'Book', best: 'Best', excellent: 'Excellent', good: 'Good',
+      inaccuracy: 'Inaccuracy', mistake: 'Mistake', blunder: 'Blunder',
+    },
+    verdict: {
+      book: 'is a book move', best: 'is the best move', excellent: 'is excellent', good: 'is good',
+      inaccuracy: 'is an inaccuracy', mistake: 'is a mistake', blunder: 'is a blunder',
+    },
+    bestWas: (san) => `Best was ${san}`,
+    evalChange: (before, after) => `Evaluation ${before} → ${after}`,
+    pending: (san) => `Rating ${san}…`,
+    engineOff: 'Turn the engine on to rate moves.',
+  },
   promotion: { label: 'Choose a promotion piece', q: 'Queen', r: 'Rook', b: 'Bishop', n: 'Knight' },
   io: {
     summary: 'Paste FEN or PGN / export',

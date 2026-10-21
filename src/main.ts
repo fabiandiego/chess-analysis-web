@@ -8,12 +8,14 @@ import '@lichess-org/chessground/assets/chessground.brown.css';
 import '@lichess-org/chessground/assets/chessground.cburnett.css';
 import './style.css';
 
-import { Game } from './game';
+import { Game, uciToSan, type GameStatus } from './game';
 import { createStockfish, type AnalysisRequest, type UciEngine } from './engine/engine';
+import type { BestMove } from './engine/uci';
 import { formatScore, toWhitePov, type InfoLine, type Score } from './engine/uci';
 import { EvalBar } from './ui/evalbar';
 import { choosePromotion } from './ui/promotion';
-import { identifyOpening, loadOpeningBook, type OpeningBook } from './openings/openings';
+import { identifyOpening, loadOpeningBook, positionKey, type OpeningBook } from './openings/openings';
+import { classifyMove, type Classification, type MoveClass, type PositionEval } from './review/classify';
 import { mountImporter } from './ui/importer';
 import { LANGS, detectLang, lang, lookup, setLang, t, type Lang } from './i18n/i18n';
 import type { ImportedGame } from './import/types';
@@ -50,6 +52,36 @@ const ARROWS = [
   { brush: 'second', color: '#2563eb' },
   { brush: 'third', color: '#d97706' },
 ] as const;
+
+/**
+ * Valoración de jugadas (src/review/classify.ts). Cada `info` multipv 1
+ * exacta alimenta `evals`, venga del análisis en vivo o de la búsqueda corta
+ * de la posición anterior. Clave: positionKey (comparte transposiciones).
+ */
+/**
+ * Profundidad mínima de ambas evaluaciones. Con 14, Stockfish lite no veía
+ * mates cortos con sacrificio (Opera de Morphy, 15.Bxd7+: +3.5 a prof. 14,
+ * +11.9 a prof. 15) y la valoración salía incoherente; 18 cuesta ~1 s por
+ * posición en un hilo.
+ */
+const REVIEW_DEPTH = 18;
+const evals = new Map<string, PositionEval>();
+/**
+ * Posiciones cuya búsqueda terminó (llegó `bestmove`) aunque no alcanzara
+ * REVIEW_DEPTH: mate visto antes, o el selector de profundidad por debajo.
+ */
+const reviewDone = new Set<string>();
+
+/** Símbolo y color de cada clase (tablero, panel y lista de jugadas). Paleta aproximada a la de chess.com. */
+const CLASS_STYLE: Record<MoveClass, { glyph: string; color: string }> = {
+  book: { glyph: '≡', color: '#a88865' },
+  best: { glyph: '★', color: '#81b64c' },
+  excellent: { glyph: '!', color: '#5c9a3a' },
+  good: { glyph: '✓', color: '#7f9c6a' },
+  inaccuracy: { glyph: '?!', color: '#e6a817' },
+  mistake: { glyph: '?', color: '#f08a24' },
+  blunder: { glyph: '??', color: '#e0412d' },
+};
 
 const evalBar = new EvalBar($('evalbar'));
 const cg: Api = Chessground($('board'), {
@@ -116,17 +148,51 @@ function restartAnalysis(): void {
   analysisFen = game.fen;
   scheduleRender();
   if (!engine) return;
-  if (!settings.engineOn || game.status()) {
-    void engine.stop();
-    return;
-  }
-  void engine.analyze({ fen: game.fen, multiPv: settings.multiPv, depth: settings.depth || undefined });
+  const req = nextRequest();
+  if (req) void engine.analyze(req);
+  else void engine.stop();
+}
+
+/**
+ * Qué debe calcular el motor ahora. Para valorar la última jugada hace falta
+ * la evaluación de la posición ANTERIOR: si no está en `evals` con
+ * profundidad suficiente, primero una búsqueda corta de esa posición y, al
+ * terminar (onBestMove), el análisis en vivo de la actual. Ambas van por la
+ * misma cola de UciEngine, así que se respeta la invariante 1.
+ */
+function nextRequest(): AnalysisRequest | null {
+  if (!settings.engineOn) return null;
+  const prev = game.prevFen;
+  if (prev && needsReview(prev)) return { fen: prev, multiPv: 1, depth: REVIEW_DEPTH };
+  if (game.status()) return null;
+  return { fen: game.fen, multiPv: settings.multiPv, depth: settings.depth || undefined };
+}
+
+function needsReview(fen: string): boolean {
+  const key = positionKey(fen);
+  return !reviewDone.has(key) && (evals.get(key)?.depth ?? 0) < REVIEW_DEPTH;
 }
 
 function onInfo(info: InfoLine, req: AnalysisRequest): void {
-  if (req.fen !== analysisFen) return; // respuesta de una posición antigua
+  if (info.multipv === 1 && info.bound === 'exact') storeEval(req.fen, info);
+  // Posición distinta de la mostrada (búsqueda corta de valoración): solo alimenta la caché.
+  if (req.fen !== analysisFen) return scheduleRender();
   lines.set(info.multipv, info);
   scheduleRender();
+}
+
+function storeEval(fen: string, info: InfoLine): void {
+  const key = positionKey(fen);
+  const old = evals.get(key);
+  if (old && old.depth > info.depth) return;
+  evals.set(key, { score: info.score, depth: info.depth, best: info.pv[0] });
+}
+
+function onBestMove(_bm: BestMove, req: AnalysisRequest): void {
+  reviewDone.add(positionKey(req.fen));
+  if (req.fen === analysisFen) return scheduleRender(); // fin del análisis en vivo (profundidad fija)
+  const next = nextRequest();
+  if (engine && next) void engine.analyze(next);
 }
 
 let rafPending = false;
@@ -183,7 +249,106 @@ function renderAnalysis(): void {
       return [{ orig: mv.slice(0, 2) as Key, dest: mv.slice(2, 4) as Key, brush: style.brush, label }];
     })
     .reverse();
-  cg.setAutoShapes(settings.engineOn ? shapes : []);
+  const review = renderReview();
+  cg.setAutoShapes([...(settings.engineOn ? shapes : []), ...(review ? [review] : [])]);
+  renderMarks();
+}
+
+// ---------------------------------------------------------------- valoración de jugadas
+
+/** Clasificación de la jugada `ply` (1..n) si ya hay datos suficientes; null si aún no. */
+function reviewOf(ply: number, positions: readonly string[], end: GameStatus | null): Classification | null {
+  const mv = game.moves[ply - 1];
+  const beforeFen = positions[ply - 1];
+  const afterFen = positions[ply];
+  if (!mv || !beforeFen || !afterFen) return null;
+  // Libro: no necesita motor (chess.com también las marca así).
+  if (openingBook && positionKey(afterFen) in openingBook) return { cls: 'book', loss: 0 };
+  const before = evals.get(positionKey(beforeFen));
+  if (!before || !isDeepEnough(beforeFen, before)) return null;
+  if (ply === positions.length - 1 && end) {
+    const after = end === 'whiteMates' || end === 'blackMates' ? 'checkmate' : 'draw';
+    return classifyMove({ before, after, played: mv.uci });
+  }
+  const after = evals.get(positionKey(afterFen));
+  if (!after || !isDeepEnough(afterFen, after)) return null;
+  return classifyMove({ before, after, played: mv.uci });
+}
+
+const isDeepEnough = (fen: string, e: PositionEval) => e.depth >= REVIEW_DEPTH || reviewDone.has(positionKey(fen));
+
+/** Tarjeta "e5 es una imprecisión" + insignia en la casilla de destino. Devuelve la insignia. */
+function renderReview(): DrawShape | null {
+  const box = $('review');
+  const ply = game.ply;
+  const mv = game.moves[ply - 1];
+  if (!mv) {
+    box.hidden = true;
+    return null;
+  }
+  const positions = game.positions;
+  const r = reviewOf(ply, positions, game.endStatus());
+  box.hidden = false;
+  const icon = box.querySelector<HTMLElement>('.review-icon')!;
+  const head = box.querySelector<HTMLElement>('.review-head')!;
+  const detail = box.querySelector<HTMLElement>('.review-detail')!;
+  if (!r) {
+    icon.hidden = true;
+    head.textContent = settings.engineOn ? t.review.pending(mv.san) : t.review.engineOff;
+    detail.textContent = '';
+    return null;
+  }
+  const style = CLASS_STYLE[r.cls];
+  icon.hidden = false;
+  icon.textContent = style.glyph;
+  icon.style.background = style.color;
+  head.textContent = `${mv.san} ${t.review.verdict[r.cls]}`;
+
+  const beforeFen = positions[ply - 1]!;
+  const before = evals.get(positionKey(beforeFen));
+  const after = evals.get(positionKey(positions[ply]!));
+  const parts: string[] = [];
+  if (before?.best && r.cls !== 'best' && r.cls !== 'book') {
+    const bestSan = uciToSan(beforeFen, before.best);
+    if (bestSan) parts.push(t.review.bestWas(bestSan));
+  }
+  if (before && after) {
+    const stm = (fen: string) => (fen.split(' ')[1] === 'b' ? 'b' : 'w');
+    parts.push(t.review.evalChange(
+      formatScore(toWhitePov(before.score, stm(beforeFen))),
+      formatScore(toWhitePov(after.score, stm(positions[ply]!))),
+    ));
+  }
+  detail.textContent = parts.join(' · ');
+
+  // Insignia en la esquina superior derecha de la casilla de destino. En customSvg de
+  // chessground la casilla va de 0 a 100 con origen en su esquina superior izquierda.
+  const size = style.glyph.length > 1 ? 15 : 19;
+  return {
+    orig: mv.uci.slice(2, 4) as Key,
+    customSvg: {
+      html:
+        `<g font-family="system-ui,sans-serif" font-weight="800" text-anchor="middle" fill="#fff">` +
+        `<circle cx="84" cy="16" r="15" fill="${style.color}" stroke="#fff" stroke-width="2.5"/>` +
+        `<text x="84" y="${16 + size * 0.36}" font-size="${size}">${style.glyph}</text></g>`,
+    },
+  };
+}
+
+/** Símbolo junto a cada jugada ya valorada en la lista. */
+function renderMarks(): void {
+  const positions = game.positions;
+  const end = game.endStatus();
+  for (const b of $('moves').querySelectorAll<HTMLButtonElement>('.mv')) {
+    const r = reviewOf(Number(b.dataset.ply), positions, end);
+    const stamp = r ? `${r.cls}:${lang}` : '';
+    if (b.dataset.stamp === stamp) continue; // sin cambios: no tocar el DOM
+    b.dataset.stamp = stamp;
+    const mark = b.querySelector<HTMLElement>('.cls')!;
+    mark.textContent = r ? CLASS_STYLE[r.cls].glyph : '';
+    mark.style.color = r ? CLASS_STYLE[r.cls].color : '';
+    b.title = r ? t.review.classes[r.cls] : '';
+  }
 }
 
 function numberedLine(san: string[], fen: string): string {
@@ -227,7 +392,9 @@ function renderMoves(): void {
     }
     const b = document.createElement('button');
     b.className = 'mv' + (i + 1 === game.ply ? ' active' : '');
-    b.textContent = p.san;
+    b.dataset.ply = String(i + 1);
+    b.append(Object.assign(document.createElement('span'), { textContent: p.san }));
+    b.append(Object.assign(document.createElement('span'), { className: 'cls' }));
     b.addEventListener('click', () => { game.goTo(i + 1); sync(); });
     frag.append(b);
     if (!white) n++;
@@ -456,7 +623,7 @@ applyLanguage();
 sync();
 
 loadOpeningBook()
-  .then((b) => { openingBook = b; renderOpening(); })
+  .then((b) => { openingBook = b; renderOpening(); scheduleRender(); })
   .catch((err: unknown) => console.error('No se pudo cargar el libro de aperturas', err));
 
 // Pestaña en segundo plano: parar el motor (batería). Al volver, reanudar.
@@ -466,7 +633,7 @@ document.addEventListener('visibilitychange', () => {
   else restartAnalysis();
 });
 
-createStockfish({ onInfo, hashMb: 32 })
+createStockfish({ onInfo, onBestMove, hashMb: 32 })
   .then(async (e) => {
     engine = e;
     engineName = await e.name;
