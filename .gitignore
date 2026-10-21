@@ -2,6 +2,8 @@ node_modules/
 dist/
 # Lo genera scripts/copy-engine.mjs desde node_modules/stockfish
 public/engine/
+# Lo genera scripts/build-openings.mjs desde data/openings/*.tsv
+src/openings/book.json
 *.log
 .DS_Store
 .vscode/

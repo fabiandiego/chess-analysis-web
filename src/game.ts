@@ -62,6 +62,10 @@ export class Game {
   get ply(): number { return this.cursor; }
   get length(): number { return this.plies.length; }
   get moves(): readonly Ply[] { return this.plies; }
+  /** Posiciones desde el inicio hasta el cursor, ambos incluidos (índice = ply). */
+  get fensToCursor(): string[] {
+    return [this.startFen, ...this.plies.slice(0, this.cursor).map((p) => p.fenAfter)];
+  }
   get turn(): 'w' | 'b' { return this.pos.turn(); }
   get inCheck(): boolean { return this.pos.inCheck(); }
   get lastMove(): [string, string] | undefined {

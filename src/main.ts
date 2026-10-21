@@ -13,6 +13,7 @@ import { createStockfish, type AnalysisRequest, type UciEngine } from './engine/
 import { formatScore, toWhitePov, type InfoLine, type Score } from './engine/uci';
 import { EvalBar } from './ui/evalbar';
 import { choosePromotion } from './ui/promotion';
+import { identifyOpening, loadOpeningBook, type OpeningBook } from './openings/openings';
 
 // ---------------------------------------------------------------- estado
 
@@ -25,6 +26,8 @@ let orientation: 'white' | 'black' = 'white';
 /** Líneas del análisis en curso, indexadas por multipv. Solo de `analysisFen`. */
 let lines = new Map<number, InfoLine>();
 let analysisFen = '';
+/** null hasta que llega el chunk del libro de aperturas. */
+let openingBook: OpeningBook | null = null;
 
 const evalBar = new EvalBar($('evalbar'));
 const cg: Api = Chessground($('board'), {
@@ -60,6 +63,7 @@ function sync(): void {
   cg.setAutoShapes([]);
 
   renderMoves();
+  renderOpening();
   const status = game.status();
   const statusEl = $('status');
   statusEl.hidden = !status;
@@ -189,6 +193,19 @@ function renderMoves(): void {
   box.querySelector('.active')?.scrollIntoView({ block: 'nearest' });
 }
 
+// ---------------------------------------------------------------- apertura
+
+function renderOpening(): void {
+  const box = $('opening');
+  const op = openingBook ? identifyOpening(game.fensToCursor, openingBook) : null;
+  box.hidden = !op;
+  if (!op) return;
+  box.querySelector('.eco')!.textContent = op.eco;
+  box.querySelector('.name')!.textContent = op.name;
+  // Fuera de teoría: el nombre es el de la última posición del libro.
+  box.classList.toggle('muted', op.ply < game.ply);
+}
+
 // ---------------------------------------------------------------- controles
 
 const nav = (ply: number) => { game.goTo(ply); sync(); };
@@ -270,6 +287,10 @@ if (hashFen) {
   try { game.loadFen(hashFen); } catch { /* FEN de la URL inválido: posición inicial */ }
 }
 sync();
+
+loadOpeningBook()
+  .then((b) => { openingBook = b; renderOpening(); })
+  .catch((err: unknown) => console.error('No se pudo cargar el libro de aperturas', err));
 
 createStockfish({ onInfo, hashMb: 32 })
   .then(async (e) => {

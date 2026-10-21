@@ -8,9 +8,11 @@ Sin cuentas, sin servidor, sin suscripción.
 ## Funciones (v0.1)
 
 - Tablero con arrastrar y soltar, movimientos legales y promoción.
-- Análisis en vivo con 1–5 líneas (MultiPV), profundidad fija o infinita.
+- Análisis en vivo con Stockfish 19 (WASM, un hilo) y 1–5 líneas (MultiPV), profundidad fija o infinita.
 - Barra de evaluación, flechas de mejores jugadas, línea de variante en SAN (clic para jugarla).
 - Lista de jugadas navegable (← → Inicio Fin, `F` para girar el tablero).
+- Nombre de la apertura y código ECO (base de datos de [Lichess](https://github.com/lichess-org/chess-openings), CC0),
+  reconocido por posición, así que detecta transposiciones.
 - Cargar FEN/PGN, exportar PGN. La posición actual queda en la URL (`#fen=...`) para compartirla.
 
 ## Uso local

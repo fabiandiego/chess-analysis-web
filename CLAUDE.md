@@ -35,7 +35,10 @@ src/
   engine/engine.ts   UciEngine: Web Worker + máquina de estados idle/searching/stopping.
   ui/evalbar.ts      Barra de evaluación (curva logística tipo Lichess, cp acotado a ±1000).
   ui/promotion.ts    Selector de pieza al promocionar.
+  openings/openings.ts  identifyOpening(): ECO + nombre por posición (transposiciones incluidas),
+                     la más profunda de la línea hasta el cursor. Libro cargado bajo demanda (chunk aparte).
 scripts/copy-engine.mjs  Elige la variante "lite-single" del paquete npm `stockfish` y escribe manifest.json.
+scripts/build-openings.mjs  data/openings/*.tsv (Lichess, CC0) -> src/openings/book.json (generado, no versionado).
 tests/               vitest.
 .github/workflows/ci.yml  typecheck + test + build + deploy a Pages en cada push a main.
 ```
@@ -50,7 +53,9 @@ tests/               vitest.
    de hosting, se puede pasar a multihilo (`Threads`) añadiendo esas cabeceras.
 3. **Rutas relativas** (`base: './'`, `new URL(..., document.baseURI)`): el sitio vive bajo
    `/<repo>/` en Pages. No usar rutas absolutas `/engine/...`.
-4. `public/engine/` está en .gitignore: se genera desde node_modules, no se versiona.
+4. `public/engine/` y `src/openings/book.json` están en .gitignore: se generan en `postinstall`/`build`.
+5. La clave del libro de aperturas es el FEN de chess.js sin contadores (`positionKey`), igual en el
+   script y en tiempo de ejecución. No calcularla con otra librería: la casilla al paso podría diferir.
 
 ## Verificación inicial (hecha, 2026-10-20)
 

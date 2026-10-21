@@ -81,7 +81,7 @@ button, select, input, textarea { font: inherit; color: inherit; }
 }
 .controls button:hover, .row button:hover { border-color: var(--accent); }
 
-.engine-box, .moves, .io, .status {
+.engine-box, .moves, .io, .status, .opening {
   background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;
 }
 .engine-head { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
@@ -102,6 +102,8 @@ button, select, input, textarea { font: inherit; color: inherit; }
 .pv-lines .pv { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .status { border-color: var(--accent); font-weight: 600; }
+.opening { padding: 6px 12px; }
+.opening .eco { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 4px; }
 
 .moves {
   display: grid; grid-template-columns: 3em 1fr 1fr; gap: 2px 4px;
