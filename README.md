@@ -20,6 +20,19 @@ Sin cuentas, sin servidor, sin suscripción.
   imprecisión, error o error grave, con insignia en el tablero, la mejor alternativa y la evaluación
   antes/después; las jugadas ya valoradas quedan marcadas en la lista. Usa los umbrales de "puntos
   esperados" de chess.com con la curva de Lichess (chess.com ajusta la curva al rating, aquí no se conoce).
+
+  | Símbolo | Clase | Puntos esperados perdidos |
+  |---|---|---|
+  | ≡ | Libro | (posición en la base de aperturas) |
+  | ★ | Mejor | jugada elegida por el motor |
+  | ! | Excelente | ≤ 0,02 |
+  | ✓ | Buena | ≤ 0,05 |
+  | ?! | Imprecisión | ≤ 0,10 |
+  | ? | Error | ≤ 0,20 |
+  | ?? | Error grave | > 0,20 |
+
+  Solo se valoran las jugadas que se visitan; una jugada justo en un umbral puede cambiar de clase
+  entre ejecuciones, porque el motor no da exactamente la misma evaluación cada vez.
 - **Nombre de la apertura y código ECO** (≈3 900 líneas de la base de datos de Lichess). Se reconoce
   por posición, así que detecta transposiciones; fuera de teoría se mantiene el último nombre, atenuado.
 - Interfaz en **español, inglés o ruso** (selector en la cabecera; por defecto, el idioma del navegador).
@@ -56,6 +69,7 @@ src/
   game.ts              Línea principal + cursor (sobre chess.js)
   engine/              Cliente UCI (Web Worker) y parser de `info`
   openings/            Identificación de la apertura (libro generado en build)
+  review/              Clasificación de jugadas (puntos esperados, umbrales de chess.com)
   import/              Descarga y normalización de partidas de Lichess / Chess.com
   i18n/                Textos de la interfaz: es.ts (referencia), en.ts, ru.ts
   ui/                  Barra de evaluación, promoción, importador
@@ -86,9 +100,17 @@ Los nombres de apertura se muestran en inglés en todos los idiomas: la base de 
 
 ## Rendimiento
 
-Se usa la build **single-thread "lite"** de Stockfish (~1,8 MB de `.wasm`) porque GitHub Pages no permite
-las cabeceras COOP/COEP necesarias para el multihilo. Es bastante más débil que Stockfish nativo
-multihilo, pero de sobra para analizar partidas humanas. Detalles en `CLAUDE.md`.
+- Motor: build **"lite" de un hilo** de Stockfish 19 (~1,8 MB de `.wasm`). El multihilo necesita
+  `SharedArrayBuffer`, es decir, las cabeceras COOP/COEP, que GitHub Pages no deja configurar
+  (se podrían inyectar con un *service worker* como [coi-serviceworker](https://github.com/gzuidhof/coi-serviceworker),
+  a costa de recargar la página en la primera visita; hoy no se usa). Es más débil que Stockfish nativo
+  multihilo, pero de sobra para analizar partidas humanas.
+- Por jugada, el motor hace como mucho tres búsquedas y se para: valoración a profundidad 18 de la
+  posición anterior (si falta), análisis en vivo a profundidad 10 (3 líneas) y valoración a 18 de la actual.
+  Con profundidad 14 la valoración fallaba en mates con sacrificio; 18 cuesta ≈1 s por posición.
+- Medido en Chromium headless: recorrer jugada a jugada la Ópera de Morphy (33 jugadas) lleva ≈32 s.
+
+Detalles en `CLAUDE.md`.
 
 ## Licencias
 

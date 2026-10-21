@@ -62,8 +62,9 @@ tests/               vitest: game, uci, openings, import, i18n, classify.
    `UciEngine` hace `stop`, descarta las `info` hasta el `bestmove` y entonces lanza la petición pendiente.
    Además `main.ts` filtra `info` cuyo `req.fen !== analysisFen`.
 2. **Motor single-thread**: GitHub Pages no permite cabeceras COOP/COEP, así que no hay
-   `SharedArrayBuffer` y las builds multihilo de Stockfish no funcionan allí. Si algún día se cambia
-   de hosting, se puede pasar a multihilo (`Threads`) añadiendo esas cabeceras.
+   `SharedArrayBuffer` y las builds multihilo de Stockfish no funcionan allí. Para pasar a multihilo
+   (`Threads`): otro hosting con esas cabeceras, o un service worker que las inyecte
+   (coi-serviceworker; la primera visita recarga la página). Se descartó de momento (2026-10-21).
 3. **Rutas relativas** (`base: './'`, `new URL(..., document.baseURI)`): el sitio vive bajo
    `/<repo>/` en Pages. No usar rutas absolutas `/engine/...`.
 4. `public/engine/` y `src/openings/book.json` están en .gitignore: se generan en `postinstall`/`build`.
@@ -104,7 +105,7 @@ y `npm run dev`), sin errores de consola:
 - [x] Stockfish 19 publica `bin/stockfish-19-lite-single.{js,wasm}` (sin hash); el script lo elige
       y vacía `public/engine/` antes de copiar para no arrastrar versiones viejas a `dist/`.
       El `.js` carga su `.wasm` hermano como worker sin necesidad de `#ruta.wasm`.
-- [x] Los tests (`game`, `uci`, `openings`, `import`, `i18n`) pasan contra chess.js real.
+- [x] Los tests (`game`, `uci`, `openings`, `import`, `i18n`, `classify`) pasan contra chess.js real.
 - [x] Manual: arrastre, promoción (selector), flechas MultiPV, barra, FEN/PGN, copiar PGN con
       cabeceras `SetUp`/`FEN`, teclado (←, Home, End), hash `#fen=` en la URL, nombre de apertura,
       cambio de idioma es/en/ru (persiste al recargar; sin restos en español en ru), valoración de
