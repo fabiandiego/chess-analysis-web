@@ -82,11 +82,12 @@ tests/               vitest: game, uci, openings, import, i18n, classify.
    obliga a ponerla en en.ts y ru.ts; tests/i18n.test.ts comprueba claves del HTML y paridad.
    Al cambiar de idioma no se reinicia el análisis: `applyLanguage()` repinta lo que ya está en pantalla.
 10. **Valoración de jugadas** (main.ts): `evals` guarda la mejor evaluación multipv 1 *exacta* por
-   `positionKey`, venga de donde venga. `nextRequest()` decide qué calcula el motor: si a la posición
-   ANTERIOR al cursor le falta profundidad (`REVIEW_DEPTH` = 18), primero una búsqueda corta de esa
-   posición y, en `onBestMove`, el análisis en vivo de la actual (misma cola: invariante 1 intacta).
-   Toda búsqueda terminada marca su posición en `reviewDone` aunque no llegue a 18 (mate visto antes o
-   selector de profundidad por debajo); sin eso la valoración se quedaría "pendiente" para siempre.
+   `positionKey`, venga de donde venga. `nextRequest()` encadena (cada una desde `onBestMove`, misma
+   cola: invariante 1 intacta): (1) valoración a `REVIEW_DEPTH` = 18 de la posición ANTERIOR si le
+   falta, (2) análisis en vivo de la actual a `LIVE_DEPTH` = 10, (3) valoración a 18 de la actual.
+   Las peticiones de valoración van en `reviewRequests` (WeakSet): no pintan líneas, y al terminar
+   marcan su posición en `reviewDone` aunque no lleguen a 18 (mate visto antes); sin eso la valoración
+   se quedaría "pendiente" para siempre. El análisis en vivo NO marca `reviewDone` (se queda en 10).
    Con profundidad 14 Stockfish lite no veía mates con sacrificio y salían valoraciones incoherentes.
    Símbolos y colores en `CLASS_STYLE`; en `customSvg` de chessground la casilla va de 0 a 100 desde su
    esquina superior izquierda (no desde el centro).
@@ -124,7 +125,9 @@ Pendiente:
 
 ## Rendimiento en móvil
 
-- En pantallas táctiles la profundidad por defecto es 20 (no infinita) y el motor se para con la pestaña oculta.
+- Análisis en vivo fijo: `LIVE_DEPTH` = 10 y `LIVE_LINES` = 3 (main.ts; sin selectores en la UI). Tras él, la
+  búsqueda de valoración a 18 y el motor queda parado: nada de `go infinite`. El motor se para con la pestaña oculta.
+  Recorrer la Opera de Morphy (33 plies) jugada a jugada: ~32 s (antes, con análisis infinito, ~112 s).
 - Stockfish 19 lite-single: ~1,8 MB de `.wasm` (17.1 lite pesaba ~7,3 MB). Carga más rápida; en Chromium
   headless dio ~40 % menos nps que 17.1 lite (medida orientativa, no de fuerza). Para volver a 17.1:
   `stockfish@~17.1.0`, el script de copia sirve igual.

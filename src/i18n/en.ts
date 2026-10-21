@@ -26,8 +26,6 @@ export const en: Messages = {
   },
   engine: {
     toggle: 'Engine',
-    lines: 'Lines',
-    depth: 'Depth',
     hint: 'Each line has the same colour as its arrow on the board. Tap a line to play its first move.',
     playLine: 'Play the first move of this line',
     calculating: 'Calculating…',

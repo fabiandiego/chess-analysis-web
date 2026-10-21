@@ -12,7 +12,8 @@ Sin cuentas, sin servidor, sin suscripción.
 ## Funciones
 
 - Tablero con arrastrar y soltar, movimientos legales y selector de pieza al promocionar.
-- Análisis en vivo con Stockfish 19 (WASM, un hilo) y 1–5 líneas (MultiPV), profundidad fija o infinita.
+- Análisis en vivo con Stockfish 19 (WASM, un hilo): 3 líneas (MultiPV) a profundidad 10, rápido y con poco
+  gasto de batería. La valoración de jugadas usa búsquedas propias a profundidad 18.
 - Barra de evaluación y flechas de colores (verde, azul y naranja) con la evaluación en la punta;
   cada línea del panel lleva el color de su flecha. Tocar una línea juega su primer movimiento.
 - **Valoración de la última jugada** como en la revisión de chess.com: libro, mejor, excelente, buena,
@@ -25,8 +26,7 @@ Sin cuentas, sin servidor, sin suscripción.
 - **Importar tus partidas de Lichess o Chess.com** por nombre de usuario (sin cuenta ni token).
 - Lista de jugadas navegable (← → Inicio Fin, `F` para girar el tablero) y botón **↺ Nueva partida**.
 - Cargar FEN/PGN y exportar PGN. La posición actual queda en la URL (`#fen=...`) para compartirla.
-- Diseño adaptado a móvil: en pantallas táctiles la profundidad por defecto es 20 y el motor se para
-  con la pestaña en segundo plano.
+- Diseño adaptado a móvil; el motor se para con la pestaña en segundo plano.
 
 ## Uso local
 

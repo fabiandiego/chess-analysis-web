@@ -31,8 +31,6 @@ export const es = {
   },
   engine: {
     toggle: 'Motor',
-    lines: 'Líneas',
-    depth: 'Prof.',
     hint: 'El color de cada línea es el de su flecha en el tablero. Toca una línea para jugar su primer movimiento.',
     playLine: 'Jugar el primer movimiento de esta línea',
     calculating: 'Calculando…',

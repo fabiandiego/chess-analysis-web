@@ -53,24 +53,25 @@ const ARROWS = [
   { brush: 'third', color: '#d97706' },
 ] as const;
 
+/** Análisis en vivo (líneas, flechas, barra): profundidad y número de líneas fijos. */
+const LIVE_DEPTH = 10;
+const LIVE_LINES = 3;
+
 /**
- * Valoración de jugadas (src/review/classify.ts). Cada `info` multipv 1
- * exacta alimenta `evals`, venga del análisis en vivo o de la búsqueda corta
- * de la posición anterior. Clave: positionKey (comparte transposiciones).
- */
-/**
- * Profundidad mínima de ambas evaluaciones. Con 14, Stockfish lite no veía
- * mates cortos con sacrificio (Opera de Morphy, 15.Bxd7+: +3.5 a prof. 14,
- * +11.9 a prof. 15) y la valoración salía incoherente; 18 cuesta ~1 s por
- * posición en un hilo.
+ * Valoración de jugadas (src/review/classify.ts): búsquedas propias, más
+ * profundas que el análisis en vivo. Con 14, Stockfish lite no veía mates
+ * cortos con sacrificio (Opera de Morphy, 15.Bxd7+: +3.5 a prof. 14, +11.9 a
+ * prof. 15) y la valoración salía incoherente; 18 cuesta ~1 s por posición.
  */
 const REVIEW_DEPTH = 18;
+/** Mejor evaluación multipv 1 exacta por positionKey, venga de la búsqueda que venga. */
 const evals = new Map<string, PositionEval>();
-/**
- * Posiciones cuya búsqueda terminó (llegó `bestmove`) aunque no alcanzara
- * REVIEW_DEPTH: mate visto antes, o el selector de profundidad por debajo.
- */
+/** Posiciones cuya búsqueda de valoración terminó aunque no llegara a REVIEW_DEPTH (p. ej. mate visto antes). */
 const reviewDone = new Set<string>();
+/** Peticiones de valoración (UciEngine devuelve el mismo objeto en onInfo/onBestMove). */
+const reviewRequests = new WeakSet<AnalysisRequest>();
+/** El análisis en vivo de `analysisFen` ya llegó a LIVE_DEPTH. */
+let liveDone = false;
 
 /** Símbolo y color de cada clase (tablero, panel y lista de jugadas). Paleta aproximada a la de chess.com. */
 const CLASS_STYLE: Record<MoveClass, { glyph: string; color: string }> = {
@@ -146,6 +147,7 @@ function renderStatus(): void {
 function restartAnalysis(): void {
   lines = new Map();
   analysisFen = game.fen;
+  liveDone = false;
   scheduleRender();
   if (!engine) return;
   const req = nextRequest();
@@ -154,18 +156,27 @@ function restartAnalysis(): void {
 }
 
 /**
- * Qué debe calcular el motor ahora. Para valorar la última jugada hace falta
- * la evaluación de la posición ANTERIOR: si no está en `evals` con
- * profundidad suficiente, primero una búsqueda corta de esa posición y, al
- * terminar (onBestMove), el análisis en vivo de la actual. Ambas van por la
- * misma cola de UciEngine, así que se respeta la invariante 1.
+ * Qué debe calcular el motor ahora, en este orden (cada búsqueda lanza la
+ * siguiente desde onBestMove; todas van por la misma cola de UciEngine, así
+ * que se respeta la invariante 1):
+ *  1. valoración de la posición ANTERIOR, si le falta (hace falta para valorar la jugada);
+ *  2. análisis en vivo de la actual a LIVE_DEPTH (lo que el usuario ve);
+ *  3. valoración de la actual a REVIEW_DEPTH (para valorar la jugada y, al avanzar, la siguiente).
  */
 function nextRequest(): AnalysisRequest | null {
   if (!settings.engineOn) return null;
   const prev = game.prevFen;
-  if (prev && needsReview(prev)) return { fen: prev, multiPv: 1, depth: REVIEW_DEPTH };
+  if (prev && needsReview(prev)) return reviewRequest(prev);
   if (game.status()) return null;
-  return { fen: game.fen, multiPv: settings.multiPv, depth: settings.depth || undefined };
+  if (!liveDone) return { fen: game.fen, multiPv: LIVE_LINES, depth: LIVE_DEPTH };
+  if (needsReview(game.fen)) return reviewRequest(game.fen);
+  return null;
+}
+
+function reviewRequest(fen: string): AnalysisRequest {
+  const req = { fen, multiPv: 1, depth: REVIEW_DEPTH };
+  reviewRequests.add(req);
+  return req;
 }
 
 function needsReview(fen: string): boolean {
@@ -175,8 +186,8 @@ function needsReview(fen: string): boolean {
 
 function onInfo(info: InfoLine, req: AnalysisRequest): void {
   if (info.multipv === 1 && info.bound === 'exact') storeEval(req.fen, info);
-  // Posición distinta de la mostrada (búsqueda corta de valoración): solo alimenta la caché.
-  if (req.fen !== analysisFen) return scheduleRender();
+  // Búsqueda de valoración (o de otra posición): solo alimenta la caché, no las líneas.
+  if (reviewRequests.has(req) || req.fen !== analysisFen) return scheduleRender();
   lines.set(info.multipv, info);
   scheduleRender();
 }
@@ -189,8 +200,9 @@ function storeEval(fen: string, info: InfoLine): void {
 }
 
 function onBestMove(_bm: BestMove, req: AnalysisRequest): void {
-  reviewDone.add(positionKey(req.fen));
-  if (req.fen === analysisFen) return scheduleRender(); // fin del análisis en vivo (profundidad fija)
+  if (reviewRequests.has(req)) reviewDone.add(positionKey(req.fen));
+  else if (req.fen === analysisFen) liveDone = true;
+  scheduleRender();
   const next = nextRequest();
   if (engine && next) void engine.analyze(next);
 }
@@ -460,14 +472,8 @@ document.addEventListener('keydown', (e) => {
 });
 
 const toggle = $('engine-toggle') as HTMLInputElement;
-const multiSel = $('multipv') as HTMLSelectElement;
-const depthSel = $('depth') as HTMLSelectElement;
 toggle.checked = settings.engineOn;
-multiSel.value = String(settings.multiPv);
-depthSel.value = String(settings.depth);
 toggle.onchange = () => { settings.engineOn = toggle.checked; saveSettings(); restartAnalysis(); };
-multiSel.onchange = () => { settings.multiPv = Number(multiSel.value); saveSettings(); restartAnalysis(); };
-depthSel.onchange = () => { settings.depth = Number(depthSel.value); saveSettings(); restartAnalysis(); };
 
 const ioError = $('io-error');
 function guarded(fn: () => void): void {
@@ -588,18 +594,13 @@ langSel.onchange = () => {
 
 interface Settings {
   engineOn: boolean;
-  multiPv: number;
-  depth: number;
   importSource: 'lichess' | 'chesscom';
   importUser: string;
   lang: Lang;
 }
 function loadSettings(): Settings {
-  // En móvil (pantalla táctil) se limita la profundidad por defecto: el análisis
-  // infinito mantiene un núcleo al 100 % y calienta el teléfono / gasta batería.
-  const touch = matchMedia('(pointer: coarse)').matches;
   const def: Settings = {
-    engineOn: true, multiPv: 3, depth: touch ? 20 : 0, importSource: 'lichess', importUser: '',
+    engineOn: true, importSource: 'lichess', importUser: '',
     lang: detectLang(undefined, navigator.languages ?? []),
   };
   let s = def;

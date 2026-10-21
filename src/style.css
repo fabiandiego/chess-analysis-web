@@ -128,9 +128,6 @@ a { color: var(--accent); }
 
 /* ------------ motor ------------ */
 .engine-head { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
-.engine-head select {
-  background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px; margin-left: 4px; padding: 2px 4px;
-}
 .switch { display: flex; gap: 6px; align-items: center; font-weight: 600; cursor: pointer; }
 
 .pv-lines { list-style: none; margin: 8px 0 0; padding: 0; }
