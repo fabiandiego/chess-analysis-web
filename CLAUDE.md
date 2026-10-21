@@ -20,6 +20,39 @@ esa puerta abierta (ver "Motor propio" abajo).
   corre en cada push pero no publica. v2 sale con un PR `v2` → `main` y la etiqueta `v2.0.0`.
 - `CHANGELOG.md`: cada PR añade su línea en "Sin publicar"; al cerrar versión se le pone número y fecha.
 
+## Estado y notas para la próxima sesión (actualizado 2026-10-21)
+
+**Dónde se quedó:** v1.0.0 cerrada y publicada (`main` = `0b21754`). Rama `v2` creada desde ahí
+(`177901a`: versión 2.0.0-dev.0, CI sin despliegue, plan abajo); todavía sin trabajo de v2.
+El trabajo nuevo va en la rama `v2` (leer su CLAUDE.md), con PR de base `v2`.
+
+**Pendiente inmediato:**
+1. **Etiqueta/release `v1.0.0` sin crear en GitHub**: el proxy del entorno de Claude rechaza `git push`
+   de etiquetas (HTTP 403; ramas sí) y no hay herramienta de GitHub para crear releases. Hacerlo a mano:
+   Releases → Draft a new release → tag `v1.0.0` (crear al publicar) → target commit `0b21754`
+   ("Versión 1.0.0") → pegar el apartado 1.0.0 de `CHANGELOG.md`. Alternativa propuesta y no hecha:
+   un workflow de release que cree etiqueta y release desde Actions (decidir con el autor).
+2. **Elegir la primera tarea de v2** (ver "Versión 2 — plan"). No se ha empezado ninguna.
+
+**Cómo trabaja el autor:** respuestas técnicas y basadas en datos; cuestionar lo que pide cuando choque
+con medidas (p. ej. profundidad 10 para valorar → se dejó 10 para el análisis en vivo y 18 para la
+valoración). Flujo habitual: rama de trabajo → commit → PR → push fast-forward a la rama base (antes
+`main`, ahora `v2`) **tras confirmarlo con él** → comprobar el CI del push.
+
+**Entorno de Claude Code en la web (lo que se aprendió):**
+- El proxy bloquea `lichess.org`, `api.chess.com` y `*.github.io`: no se puede probar la importación
+  real, su CORS ni el sitio publicado. `api.github.com` sí responde (sirve para seguir el CI con `curl`).
+- `npm run e2e` en local falla porque Playwright 1.64 no encuentra su navegador. Ejecutar una copia del
+  script con `chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' })`
+  y borrarla después (en CI funciona tal cual: instala su navegador).
+- Stockfish se puede consultar en node para contrastar evaluaciones:
+  `printf "uci\nposition fen <FEN>\ngo depth 18\n" | node node_modules/stockfish/bin/stockfish-19-lite-single.js`
+- Partidas de prueba de la valoración: mate del pastor `1. e4 e5 2. Qh5 Nc6 3. Bc4 Nf6 4. Qxf7#`
+  (3…Nf6 error grave, 4.Qxf7# mejor); Ópera de Morphy (`1. e4 e5 2. Nf3 d6 3. d4 Bg4 4. dxe5 Bxf3 5. Qxf3 dxe5
+  6. Bc4 Nf6 7. Qb3 Qe7 8. Nc3 c6 9. Bg5 b5 10. Nxb5 cxb5 11. Bxb5+ Nbd7 12. O-O-O Rd8 13. Rxd7 Rxd7 14. Rd1 Qe6
+  15. Bxd7+ Nxd7 16. Qb8+ Nxb8 17. Rd8#`): 15.Bxd7+ mejor, 9…b5 imprecisión/error (en el umbral, varía entre
+  ejecuciones); recorrerla jugada a jugada ≈32 s en Chromium headless.
+
 ## Comandos
 
 Node 22.12+ (lo exige Vitest 5). Sitio publicado: https://fabiandiego.github.io/chess-analysis-web/
