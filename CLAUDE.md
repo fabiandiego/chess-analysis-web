@@ -12,6 +12,14 @@ Objetivo a medio plazo del autor (estudiante de ingeniería): **escribir un moto
 en la misma interfaz para compararlo contra Stockfish. Toda decisión de arquitectura debe mantener
 esa puerta abierta (ver "Motor propio" abajo).
 
+## Versiones y ramas
+
+- `main` = **v1** publicada (etiqueta `v1.0.0`). Cada push a `main` despliega en GitHub Pages; solo
+  arreglos de v1, siempre por PR. Al arreglar algo en `main`, llevarlo también a `v2` (merge `main` → `v2`).
+- `v2` = **versión 2 en desarrollo** (`package.json` 2.0.0-dev.N). Los PR de v2 van con base `v2`; su CI
+  corre en cada push pero no publica. v2 sale con un PR `v2` → `main` y la etiqueta `v2.0.0`.
+- `CHANGELOG.md`: cada PR añade su línea en "Sin publicar"; al cerrar versión se le pone número y fecha.
+
 ## Comandos
 
 Node 22.12+ (lo exige Vitest 5). Sitio publicado: https://fabiandiego.github.io/chess-analysis-web/
@@ -34,7 +42,7 @@ Antes de dar una tarea por terminada: `npm run typecheck && npm test && npm run 
 ```
 src/
   main.ts            UI: conecta Game <-> chessground <-> motor. `sync()` es la única vía de refresco.
-  game.ts            Línea principal + cursor sobre chess.js. Sin árbol de variantes (v0.1).
+  game.ts            Línea principal + cursor sobre chess.js. Sin árbol de variantes (llega en v2).
   engine/uci.ts      Parser UCI puro (sin DOM). Scores: UCI = bando que mueve; UI = blancas (toWhitePov).
   engine/engine.ts   UciEngine: Web Worker + máquina de estados idle/searching/stopping.
   ui/evalbar.ts      Barra de evaluación (curva logística tipo Lichess, cp acotado a ±1000).
@@ -140,7 +148,7 @@ Pendiente:
    visitadas), gráfica de evaluación, resumen de precisión por jugador. La clasificación ya existe
    (`review/classify.ts`); faltan "brillante", "gran jugada" y "oportunidad perdida", que requieren
    detectar sacrificios y jugadas únicas.
-3. ~~Importar desde Lichess/Chess.com~~ (hecho, v0.2). Siguiente: caché en IndexedDB, filtros por ritmo/fecha,
+3. ~~Importar desde Lichess/Chess.com~~ (hecho, v1.0.0). Siguiente: caché en IndexedDB, filtros por ritmo/fecha,
    paginación (Lichess `until`, meses anteriores de Chess.com).
 4. **Motor propio** (ver abajo).
 

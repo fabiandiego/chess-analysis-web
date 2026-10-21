@@ -92,6 +92,11 @@ Todos los textos están en `src/i18n/`. `es.ts` define las claves; `en.ts` y `ru
 
 Los nombres de apertura se muestran en inglés en todos los idiomas: la base de datos de Lichess solo los tiene en inglés.
 
+## Versiones
+
+- **v1** (`main`, etiqueta `v1.0.0`): la versión publicada. Cambios en [`CHANGELOG.md`](CHANGELOG.md).
+- **v2** (rama `v2`): en desarrollo; no se publica hasta hacer merge a `main`.
+
 ## Despliegue en GitHub Pages
 
 1. En el repo: **Settings → Pages → Build and deployment → Source: GitHub Actions** (una sola vez).
