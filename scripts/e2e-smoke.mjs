@@ -59,7 +59,21 @@ for (const [name, device] of targets) {
     engine: document.getElementById('engine-name')?.textContent,
     reset: !!document.getElementById('btn-reset'),
   }));
+  // Regresión: navegar con ▶ no debe desplazar la página (antes scrollIntoView movía el tablero fuera de pantalla).
+  r.scrollShift = await page.evaluate(async () => {
+    const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms));
+    document.getElementById('pgn-input').value =
+      '1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Be3 e5 7. Nb3 Be6 8. f3 Be7 9. Qd2 O-O 10. O-O-O Nbd7 11. g4 b5 12. g5 b4 13. Ne2 Ne8 14. f4 a5 15. f5 a4 *';
+    document.getElementById('btn-pgn').click();
+    document.getElementById('btn-start').click();
+    window.scrollTo(0, 0);
+    await sleep(200);
+    const before = window.scrollY;
+    for (let i = 0; i < 25; i++) { document.getElementById('btn-next').click(); await sleep(40); }
+    return Math.round(window.scrollY - before);
+  });
   const problems = [...errors];
+  if (r.scrollShift !== 0) problems.push(`▶ desplazó la página ${r.scrollShift}px`);
   if (r.scrollWidth > r.viewport) problems.push(`desbordamiento horizontal: ${r.scrollWidth}px > ${r.viewport}px`);
   if (!r.reset) problems.push('falta el botón Nueva partida');
 

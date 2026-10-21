@@ -60,7 +60,9 @@ tests/               vitest.
 5. **Móvil sin desbordamiento horizontal**: columnas con `minmax(0, …)` / `min-width: 0` y el override
    de `coords.files` en style.css (chessground.base.css las desplaza 24 px fuera del tablero).
    `npm run e2e` lo comprueba en iPhone SE (320 px) y Pixel 7.
-6. Colores de flechas en `ARROWS` (main.ts): el mismo color marca la línea en el panel. Mantenerlos sincronizados.
+6. **Nunca `scrollIntoView()`** para la lista de jugadas: desplaza la página entera. Usar `keepVisibleInside()`.
+   `npm run e2e` comprueba que ▶ no mueve la página.
+7. Colores de flechas en `ARROWS` (main.ts): el mismo color marca la línea en el panel. Mantenerlos sincronizados.
 
 ## Estado de verificación
 

@@ -218,7 +218,20 @@ function renderMoves(): void {
     white = !white;
   });
   box.replaceChildren(frag);
-  box.querySelector('.active')?.scrollIntoView({ block: 'nearest' });
+  keepVisibleInside(box, box.querySelector<HTMLElement>('.active'));
+}
+
+/**
+ * Desplaza SOLO el contenedor para que `el` quede visible.
+ * No usar scrollIntoView(): desplaza también la página, y en móvil (lista
+ * debajo del tablero) cada ▶ sacaba el tablero de la pantalla.
+ */
+function keepVisibleInside(box: HTMLElement, el: HTMLElement | null): void {
+  if (!el) return;
+  const b = box.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  if (r.top < b.top) box.scrollTop -= b.top - r.top;
+  else if (r.bottom > b.bottom) box.scrollTop += r.bottom - b.bottom;
 }
 
 // ---------------------------------------------------------------- controles
