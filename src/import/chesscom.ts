@@ -15,7 +15,7 @@ export async function fetchChessComGames(username: string, max = 30, signal?: Ab
   const res = await fetch(`${BASE}/${encodeURIComponent(user)}/games/archives`, { signal });
   if (!res.ok) throw await httpError(res, user);
   const { archives } = (await res.json()) as { archives?: string[] };
-  if (!Array.isArray(archives)) throw new ImportError('Respuesta inesperada de Chess.com.');
+  if (!Array.isArray(archives)) throw new ImportError('unexpected', { site: 'Chess.com' });
 
   const out: ImportedGame[] = [];
   for (const url of archives.slice(-MAX_ARCHIVES).reverse()) {

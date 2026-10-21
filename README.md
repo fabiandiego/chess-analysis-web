@@ -14,6 +14,7 @@ Sin cuentas, sin servidor, sin suscripción.
 - Lista de jugadas navegable (← → Inicio Fin, `F` para girar el tablero).
 - Nombre de la apertura y código ECO (base de datos de [Lichess](https://github.com/lichess-org/chess-openings), CC0),
   reconocido por posición, así que detecta transposiciones.
+- Interfaz en **español, inglés o ruso** (selector arriba; por defecto, el idioma del navegador).
 - **Importar tus partidas de Lichess o Chess.com** por nombre de usuario (sin cuenta ni token).
 - Cargar FEN/PGN, exportar PGN. La posición actual queda en la URL (`#fen=...`) para compartirla.
 

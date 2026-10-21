@@ -15,12 +15,15 @@ import { EvalBar } from './ui/evalbar';
 import { choosePromotion } from './ui/promotion';
 import { identifyOpening, loadOpeningBook, type OpeningBook } from './openings/openings';
 import { mountImporter } from './ui/importer';
+import { LANGS, detectLang, lang, lookup, setLang, t, type Lang } from './i18n/i18n';
+import type { ImportedGame } from './import/types';
 
 // ---------------------------------------------------------------- estado
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 const settings = loadSettings();
+setLang(settings.lang);
 const game = new Game();
 let engine: UciEngine | null = null;
 let orientation: 'white' | 'black' = 'white';
@@ -29,6 +32,11 @@ let lines = new Map<number, InfoLine>();
 let analysisFen = '';
 /** null hasta que llega el chunk del libro de aperturas. */
 let openingBook: OpeningBook | null = null;
+/** Nombre que da el motor (`id name`); null mientras carga. */
+let engineName: string | null = null;
+let engineError: string | null = null;
+/** Partida importada que se está revisando (para el aviso de arriba). */
+let bannerGame: ImportedGame | null = null;
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -87,14 +95,18 @@ function sync(): void {
 
   renderMoves();
   renderOpening();
-  const status = game.status();
-  const statusEl = $('status');
-  statusEl.hidden = !status;
-  statusEl.textContent = status ?? '';
+  renderStatus();
   ($('fen-input') as HTMLInputElement).value = game.fen;
   history.replaceState(null, '', `#fen=${encodeURIComponent(game.fen)}`);
 
   restartAnalysis();
+}
+
+function renderStatus(): void {
+  const status = game.status();
+  const statusEl = $('status');
+  statusEl.hidden = !status;
+  statusEl.textContent = status ? t.status[status] : '';
 }
 
 // ---------------------------------------------------------------- motor
@@ -137,8 +149,8 @@ function renderAnalysis(): void {
 
   const stats = $('engine-stats');
   stats.textContent = best
-    ? `prof. ${best.depth}${best.seldepth ? '/' + best.seldepth : ''} · ${formatNodes(best.nps)} nps · ${formatNodes(best.nodes)} nodos`
-    : settings.engineOn && engine ? 'Calculando…' : '—';
+    ? t.engine.stats(`${best.depth}${best.seldepth ? '/' + best.seldepth : ''}`, formatNodes(best.nps), formatNodes(best.nodes))
+    : engineError ?? (settings.engineOn && engine && !game.status() ? t.engine.calculating : '—');
 
   const list = $('pv-lines');
   list.replaceChildren(
@@ -151,7 +163,7 @@ function renderAnalysis(): void {
         `<span class="dot" style="background:${dot}"></span>` +
         `<span class="score ${scoreClass(score)}">${formatScore(score)}</span><span class="pv"></span>`;
       li.querySelector('.pv')!.textContent = numberedLine(san, game.fen);
-      li.title = 'Jugar el primer movimiento de esta línea';
+      li.title = t.engine.playLine;
       li.addEventListener('click', () => {
         if (l.pv[0] && game.playUci(l.pv[0])) sync();
       });
@@ -309,15 +321,20 @@ $('btn-reset').onclick = () => {
   guarded(() => game.loadFen(START_FEN)); // guarded() ya llama a sync()
 };
 
-/** Aviso "Analizando: A vs B" cuando se abre una partida importada. */
-function setBanner(text: string | null, href?: string): void {
+/** Aviso "A vs B (resultado)" cuando se abre una partida importada. */
+function setBanner(g: ImportedGame | null): void {
+  bannerGame = g;
+  renderBanner();
+}
+function renderBanner(): void {
+  const g = bannerGame;
   const el = $('game-banner');
-  el.hidden = !text;
+  el.hidden = !g;
   el.replaceChildren();
-  if (!text) return;
-  el.append(text);
-  if (href) {
-    const a = Object.assign(document.createElement('a'), { href, target: '_blank', rel: 'noopener', textContent: 'ver original ↗' });
+  if (!g) return;
+  el.append(`${g.white} vs ${g.black} (${g.result}) · ${t.banner.advance}`);
+  if (g.url) {
+    const a = Object.assign(document.createElement('a'), { href: g.url, target: '_blank', rel: 'noopener', textContent: t.banner.original });
     el.append(' · ', a);
   }
 }
@@ -329,7 +346,7 @@ $('btn-copy-pgn').onclick = async () => {
 
 // ---------------------------------------------------------------- importar partidas
 
-mountImporter($('importer'), {
+const importer = mountImporter($('importer'), {
   prefs: { source: settings.importSource, username: settings.importUser },
   onPrefsChange: (p) => {
     settings.importSource = p.source;
@@ -341,17 +358,64 @@ mountImporter($('importer'), {
       game.loadPgn(g.pgn);
     } catch (err) {
       ioError.hidden = false;
-      ioError.textContent = `No se pudo leer el PGN de ${g.url}: ${err instanceof Error ? err.message : err}`;
+      ioError.textContent = t.io.pgnReadError(g.url, err instanceof Error ? err.message : String(err));
       return;
     }
     game.goTo(0); // revisión desde el principio
     if (userColor) orientation = userColor;
     ioError.hidden = true;
-    setBanner(`${g.white} vs ${g.black} (${g.result}) · usa ▶ para avanzar`, g.url || undefined);
+    setBanner(g);
     sync();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   },
 });
+
+// ---------------------------------------------------------------- idioma
+
+/**
+ * Textos fijos de index.html: `data-i18n` (texto), `data-i18n-title`,
+ * `data-i18n-aria-label` y `data-i18n-placeholder` llevan una clave de `t`.
+ */
+function translateDom(): void {
+  const attrs = { 'data-i18n-title': 'title', 'data-i18n-aria-label': 'aria-label', 'data-i18n-placeholder': 'placeholder' };
+  for (const el of document.querySelectorAll<HTMLElement>('[data-i18n]')) {
+    const text = lookup(t, el.dataset.i18n!);
+    if (text !== undefined) el.textContent = text;
+  }
+  for (const [data, attr] of Object.entries(attrs)) {
+    for (const el of document.querySelectorAll<HTMLElement>(`[${data}]`)) {
+      const text = lookup(t, el.getAttribute(data)!);
+      if (text !== undefined) el.setAttribute(attr, text);
+    }
+  }
+}
+
+function renderEngineName(): void {
+  $('engine-name').textContent = engineName ?? (engineError ? t.header.engineUnavailable : t.header.loadingEngine);
+}
+
+/** Aplica el idioma actual a todo lo ya pintado (sin reiniciar el análisis). */
+function applyLanguage(): void {
+  document.documentElement.lang = lang;
+  document.title = t.pageTitle;
+  translateDom();
+  renderEngineName();
+  renderStatus();
+  renderBanner();
+  scheduleRender(); // estadísticas y títulos de las líneas del motor
+}
+
+const langSel = $('lang') as HTMLSelectElement;
+langSel.replaceChildren(
+  ...(Object.keys(LANGS) as Lang[]).map((l) => new Option(LANGS[l].langName, l, false, l === lang)),
+);
+langSel.onchange = () => {
+  settings.lang = langSel.value as Lang;
+  saveSettings();
+  setLang(settings.lang);
+  applyLanguage();
+  importer.relabel();
+};
 
 // ---------------------------------------------------------------- ajustes
 
@@ -361,17 +425,22 @@ interface Settings {
   depth: number;
   importSource: 'lichess' | 'chesscom';
   importUser: string;
+  lang: Lang;
 }
 function loadSettings(): Settings {
   // En móvil (pantalla táctil) se limita la profundidad por defecto: el análisis
   // infinito mantiene un núcleo al 100 % y calienta el teléfono / gasta batería.
   const touch = matchMedia('(pointer: coarse)').matches;
-  const def: Settings = { engineOn: true, multiPv: 3, depth: touch ? 20 : 0, importSource: 'lichess', importUser: '' };
+  const def: Settings = {
+    engineOn: true, multiPv: 3, depth: touch ? 20 : 0, importSource: 'lichess', importUser: '',
+    lang: detectLang(undefined, navigator.languages ?? []),
+  };
+  let s = def;
   try {
-    return { ...def, ...JSON.parse(localStorage.getItem('chess-analysis:settings') ?? '{}') };
-  } catch {
-    return def;
-  }
+    s = { ...def, ...JSON.parse(localStorage.getItem('chess-analysis:settings') ?? '{}') };
+  } catch { /* JSON corrupto o sin acceso: valores por defecto */ }
+  s.lang = detectLang(s.lang, navigator.languages ?? []); // descarta un idioma guardado que ya no exista
+  return s;
 }
 function saveSettings(): void {
   try { localStorage.setItem('chess-analysis:settings', JSON.stringify(settings)); } catch { /* modo privado */ }
@@ -383,6 +452,7 @@ const hashFen = new URLSearchParams(location.hash.slice(1)).get('fen');
 if (hashFen) {
   try { game.loadFen(hashFen); } catch { /* FEN de la URL inválido: posición inicial */ }
 }
+applyLanguage();
 sync();
 
 loadOpeningBook()
@@ -399,11 +469,13 @@ document.addEventListener('visibilitychange', () => {
 createStockfish({ onInfo, hashMb: 32 })
   .then(async (e) => {
     engine = e;
-    $('engine-name').textContent = await e.name;
+    engineName = await e.name;
+    renderEngineName();
     restartAnalysis();
   })
   .catch((err: unknown) => {
     console.error(err);
-    $('engine-name').textContent = 'Motor no disponible';
-    $('engine-stats').textContent = err instanceof Error ? err.message : String(err);
+    engineError = err instanceof Error ? err.message : String(err);
+    renderEngineName();
+    scheduleRender();
   });

@@ -17,7 +17,20 @@ export interface ImportedGame {
   pgn: string;
 }
 
-export class ImportError extends Error {}
+/**
+ * Error de importación con código, no con texto: la UI lo traduce con
+ * t.importer.errors[code] (los parámetros van en `user`, `status`, `site`).
+ */
+export type ImportErrorCode = 'invalidUser' | 'notFound' | 'rateLimited' | 'http' | 'unexpected';
+export class ImportError extends Error {
+  constructor(
+    readonly code: ImportErrorCode,
+    readonly params: { user?: string; status?: number; site?: string } = {},
+  ) {
+    super(`${code} ${JSON.stringify(params)}`);
+    this.name = 'ImportError';
+  }
+}
 
 /** Normaliza nombres para comparar (ambos sitios no distinguen mayúsculas). */
 export const sameUser = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
@@ -26,13 +39,13 @@ export const sameUser = (a: string, b: string) => a.trim().toLowerCase() === b.t
 export function assertValidUsername(user: string): string {
   const u = user.trim();
   if (!/^[A-Za-z0-9_-]{2,30}$/.test(u)) {
-    throw new ImportError('Nombre de usuario no válido (2–30 caracteres: letras, números, _ o -).');
+    throw new ImportError('invalidUser');
   }
   return u;
 }
 
 export async function httpError(res: Response, user: string): Promise<ImportError> {
-  if (res.status === 404) return new ImportError(`No existe el usuario "${user}" o no tiene partidas públicas.`);
-  if (res.status === 429) return new ImportError('Demasiadas peticiones: el servidor pide esperar. Prueba en un minuto.');
-  return new ImportError(`Error ${res.status} del servidor al descargar partidas.`);
+  if (res.status === 404) return new ImportError('notFound', { user });
+  if (res.status === 429) return new ImportError('rateLimited');
+  return new ImportError('http', { status: res.status });
 }

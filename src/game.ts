@@ -7,6 +7,9 @@
  */
 import { Chess, type Move, type Square } from 'chess.js';
 
+/** Fin de partida. El texto lo pone la UI (t.status[...]), según el idioma. */
+export type GameStatus = 'whiteMates' | 'blackMates' | 'stalemate' | 'insufficient' | 'threefold' | 'fiftyMoves';
+
 export interface Ply {
   san: string;
   uci: string;
@@ -81,12 +84,12 @@ export class Game {
     return this.startFen.split(' ')[1] === 'b';
   }
 
-  status(): string | null {
-    if (this.pos.isCheckmate()) return this.turn === 'w' ? 'Jaque mate: ganan negras' : 'Jaque mate: ganan blancas';
-    if (this.pos.isStalemate()) return 'Tablas por ahogado';
-    if (this.pos.isInsufficientMaterial()) return 'Tablas por material insuficiente';
-    if (this.pos.isThreefoldRepetition()) return 'Tablas por triple repetición';
-    if (this.pos.isDraw()) return 'Tablas (regla de 50 movimientos)';
+  status(): GameStatus | null {
+    if (this.pos.isCheckmate()) return this.turn === 'w' ? 'blackMates' : 'whiteMates';
+    if (this.pos.isStalemate()) return 'stalemate';
+    if (this.pos.isInsufficientMaterial()) return 'insufficient';
+    if (this.pos.isThreefoldRepetition()) return 'threefold';
+    if (this.pos.isDraw()) return 'fiftyMoves';
     return null;
   }
 

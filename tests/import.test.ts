@@ -32,7 +32,7 @@ describe('Lichess NDJSON', () => {
 
   it('tablas sin ganador y oponente IA', () => {
     expect(games[1]?.result).toBe('½-½');
-    expect(games[1]?.white).toBe('Stockfish nivel 3');
+    expect(games[1]?.white).toBe('Stockfish 3/8');
   });
 
   it('respuesta vacía => lista vacía', () => {

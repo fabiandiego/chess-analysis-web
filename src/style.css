@@ -54,6 +54,11 @@ a { color: var(--accent); }
   padding: 6px 14px; cursor: pointer; font-weight: 600; white-space: nowrap;
 }
 .btn-reset:hover { border-color: var(--accent); }
+.lang-select {
+  background: var(--surface-2); color: inherit; border: 1px solid var(--border); border-radius: 999px;
+  padding: 5px 8px; font: inherit; font-size: 14px; cursor: pointer;
+}
+.lang-select:hover { border-color: var(--accent); }
 
 /* ------------ layout ------------ */
 .layout {

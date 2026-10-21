@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Guía para Claude Code en este repositorio. Idioma del proyecto: español (código en inglés, comentarios y UI en español).
+Guía para Claude Code en este repositorio. Idioma del proyecto: español (código en inglés, comentarios en español). La UI es multilingüe: es / en / ru.
 
 ## Qué es
 
@@ -38,6 +38,8 @@ src/
   ui/promotion.ts    Selector de pieza al promocionar.
   openings/openings.ts  identifyOpening(): ECO + nombre por posición (transposiciones incluidas),
                      la más profunda de la línea hasta el cursor. Libro cargado bajo demanda (chunk aparte).
+  i18n/es.ts         Textos de la UI; fuente de verdad de las claves (`Messages`). en.ts y ru.ts se tipan con ella.
+  i18n/i18n.ts       `t` (binding vivo), setLang, detectLang (guardado > navegador > es), lookup para `data-i18n`.
   ui/importer.ts     Panel "Mis partidas": busca por usuario y abre la partida (orienta el tablero al color del usuario).
   import/lichess.ts  GET lichess.org/api/games/user/{u} (NDJSON, pgnInJson). parseLichessNdjson es puro.
   import/chesscom.ts api.chess.com/pub/player/{u}/games/archives -> meses recientes EN SERIE (429 si se paraleliza).
@@ -68,6 +70,12 @@ tests/               vitest.
 7. Colores de flechas en `ARROWS` (main.ts): el mismo color marca la línea en el panel. Mantenerlos sincronizados.
 8. La clave del libro de aperturas es el FEN de chess.js sin contadores (`positionKey`), igual en el
    script y en tiempo de ejecución. No calcularla con otra librería: la casilla al paso podría diferir.
+9. **Textos de la UI siempre por `t`** (`src/i18n/`), nunca literales en main.ts/ui/*. Lo estático de
+   index.html lleva `data-i18n` / `data-i18n-title` / `-aria-label` / `-placeholder` (el texto español
+   del HTML es solo el respaldo). Las capas sin DOM (game.ts, import/*) devuelven **códigos**
+   (`GameStatus`, `ImportError.code`) y la UI los traduce. Al añadir un texto: clave en es.ts → tsc
+   obliga a ponerla en en.ts y ru.ts; tests/i18n.test.ts comprueba claves del HTML y paridad.
+   Al cambiar de idioma no se reinicia el análisis: `applyLanguage()` repinta lo que ya está en pantalla.
 
 ## Estado de verificación
 
@@ -83,7 +91,8 @@ y `npm run dev`), sin errores de consola:
       El `.js` carga su `.wasm` hermano como worker sin necesidad de `#ruta.wasm`.
 - [x] `tests/game.test.ts` y `tests/openings.test.ts` pasan contra chess.js real.
 - [x] Manual: arrastre, promoción (selector), flechas MultiPV, barra, FEN/PGN, copiar PGN con
-      cabeceras `SetUp`/`FEN`, teclado (←, Home, End), hash `#fen=` en la URL, nombre de apertura.
+      cabeceras `SetUp`/`FEN`, teclado (←, Home, End), hash `#fen=` en la URL, nombre de apertura,
+      cambio de idioma es/en/ru (persiste al recargar; sin restos en español en ru).
 
 Pendiente:
 

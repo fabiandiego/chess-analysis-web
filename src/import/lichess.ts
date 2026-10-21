@@ -73,15 +73,16 @@ export function parseLichessNdjson(text: string): ImportedGame[] {
     });
   }
   if (text.trim() && out.length === 0 && !text.includes('"id"')) {
-    throw new ImportError('Respuesta inesperada de Lichess.');
+    throw new ImportError('unexpected', { site: 'Lichess' });
   }
   return out;
 }
 
 function playerName(p?: LichessPlayer): string {
   if (p?.user?.name) return p.user.name;
-  if (p?.aiLevel) return `Stockfish nivel ${p.aiLevel}`;
-  return 'Anónimo';
+  // Sin palabras traducibles: estos nombres son datos de la partida, no UI.
+  if (p?.aiLevel) return `Stockfish ${p.aiLevel}/8`;
+  return '?'; // anónimo (convención PGN para jugador desconocido)
 }
 
 function lichessResult(g: LichessGameJson): string {

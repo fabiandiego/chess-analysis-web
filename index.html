@@ -10,9 +10,10 @@
   </head>
   <body>
     <header class="topbar">
-      <h1>♞ Análisis</h1>
+      <h1 data-i18n="header.title">♞ Análisis</h1>
       <span id="engine-name" class="muted small engine-name">Cargando motor…</span>
-      <button id="btn-reset" class="btn-reset" title="Volver a la posición inicial">↺ Nueva partida</button>
+      <select id="lang" class="lang-select" title="Idioma" aria-label="Idioma" data-i18n-title="header.language" data-i18n-aria-label="header.language"></select>
+      <button id="btn-reset" class="btn-reset" title="Volver a la posición inicial" data-i18n="header.reset" data-i18n-title="header.resetTitle">↺ Nueva partida</button>
     </header>
 
     <main class="layout">
@@ -24,12 +25,12 @@
       </section>
 
       <section class="panel">
-        <div class="controls" role="toolbar" aria-label="Navegación">
-          <button id="btn-start" title="Ir al inicio (Inicio)" aria-label="Ir al inicio">⏮</button>
-          <button id="btn-prev" title="Jugada anterior (←)" aria-label="Jugada anterior">◀</button>
-          <button id="btn-next" title="Jugada siguiente (→)" aria-label="Jugada siguiente">▶</button>
-          <button id="btn-end" title="Ir al final (Fin)" aria-label="Ir al final">⏭</button>
-          <button id="btn-flip" title="Girar tablero (F)" aria-label="Girar tablero">⇅</button>
+        <div class="controls" role="toolbar" aria-label="Navegación" data-i18n-aria-label="nav.label">
+          <button id="btn-start" title="Ir al inicio (Inicio)" aria-label="Ir al inicio" data-i18n-title="nav.startKey" data-i18n-aria-label="nav.start">⏮</button>
+          <button id="btn-prev" title="Jugada anterior (←)" aria-label="Jugada anterior" data-i18n-title="nav.prevKey" data-i18n-aria-label="nav.prev">◀</button>
+          <button id="btn-next" title="Jugada siguiente (→)" aria-label="Jugada siguiente" data-i18n-title="nav.nextKey" data-i18n-aria-label="nav.next">▶</button>
+          <button id="btn-end" title="Ir al final (Fin)" aria-label="Ir al final" data-i18n-title="nav.endKey" data-i18n-aria-label="nav.end">⏭</button>
+          <button id="btn-flip" title="Girar tablero (F)" aria-label="Girar tablero" data-i18n-title="nav.flipKey" data-i18n-aria-label="nav.flip">⇅</button>
         </div>
 
         <div id="game-banner" class="banner" hidden></div>
@@ -39,14 +40,14 @@
           <div class="engine-head">
             <label class="switch">
               <input id="engine-toggle" type="checkbox" checked />
-              <span>Motor</span>
+              <span data-i18n="engine.toggle">Motor</span>
             </label>
-            <label>Líneas
+            <label><span data-i18n="engine.lines">Líneas</span>
               <select id="multipv">
                 <option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option>
               </select>
             </label>
-            <label>Prof.
+            <label><span data-i18n="engine.depth">Prof.</span>
               <select id="depth">
                 <option value="0">∞</option>
                 <option value="16">16</option><option value="20">20</option>
@@ -56,29 +57,29 @@
           </div>
           <div id="engine-stats" class="muted small">—</div>
           <ol id="pv-lines" class="pv-lines"></ol>
-          <p class="hint muted small">El color de cada línea es el de su flecha en el tablero. Toca una línea para jugar su primer movimiento.</p>
+          <p class="hint muted small" data-i18n="engine.hint">El color de cada línea es el de su flecha en el tablero. Toca una línea para jugar su primer movimiento.</p>
         </div>
 
-        <div id="opening" class="card opening" title="Apertura (base de datos de Lichess)" hidden>
+        <div id="opening" class="card opening" title="Apertura (base de datos de Lichess)" data-i18n-title="opening.title" hidden>
           <span class="eco"></span> <span class="name"></span>
         </div>
 
-        <div id="moves" class="card moves" aria-label="Movimientos"></div>
+        <div id="moves" class="card moves" aria-label="Movimientos" data-i18n-aria-label="moves.label"></div>
 
         <section id="importer" class="card importer" aria-labelledby="importer-title"></section>
 
         <details class="card io">
-          <summary>Pegar FEN o PGN / exportar</summary>
+          <summary data-i18n="io.summary">Pegar FEN o PGN / exportar</summary>
           <label for="fen-input">FEN</label>
           <div class="row">
             <input id="fen-input" type="text" spellcheck="false" autocomplete="off" />
-            <button id="btn-fen">Cargar</button>
+            <button id="btn-fen" data-i18n="io.load">Cargar</button>
           </div>
           <label for="pgn-input">PGN</label>
-          <textarea id="pgn-input" rows="5" spellcheck="false" placeholder="Pega aquí un PGN"></textarea>
+          <textarea id="pgn-input" rows="5" spellcheck="false" placeholder="Pega aquí un PGN" data-i18n-placeholder="io.pgnPlaceholder"></textarea>
           <div class="row">
-            <button id="btn-pgn">Cargar PGN</button>
-            <button id="btn-copy-pgn">Copiar PGN</button>
+            <button id="btn-pgn" data-i18n="io.loadPgn">Cargar PGN</button>
+            <button id="btn-copy-pgn" data-i18n="io.copyPgn">Copiar PGN</button>
           </div>
           <p id="io-error" class="error" hidden></p>
         </details>

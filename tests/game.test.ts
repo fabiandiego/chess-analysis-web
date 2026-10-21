@@ -66,7 +66,7 @@ describe('Game', () => {
   it('detecta mate', () => {
     const g = new Game();
     for (const m of ['f2f3', 'e7e5', 'g2g4', 'd8h4']) g.playUci(m);
-    expect(g.status()).toBe('Jaque mate: ganan negras');
+    expect(g.status()).toBe('blackMates');
   });
 
   it('lanza error con FEN inválido sin corromper el estado', () => {
