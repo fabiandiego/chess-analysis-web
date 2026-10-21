@@ -5,14 +5,16 @@ Sin cuentas, sin servidor, sin suscripción.
 
 **Stack:** TypeScript · Vite · [chessground](https://github.com/lichess-org/chessground) · [chess.js](https://github.com/jhlywa/chess.js) · [stockfish.js](https://github.com/nmrugg/stockfish.js)
 
-## Funciones (v0.1)
+## Funciones (v0.3)
 
 - Tablero con arrastrar y soltar, movimientos legales y promoción.
 - Análisis en vivo con Stockfish 19 (WASM, un hilo) y 1–5 líneas (MultiPV), profundidad fija o infinita.
-- Barra de evaluación, flechas de mejores jugadas, línea de variante en SAN (clic para jugarla).
+- Barra de evaluación y flechas de colores (verde, azul y naranja) con la evaluación en la punta; cada línea del panel lleva el color de su flecha.
+- Diseño adaptado a móvil y botón **↺ Nueva partida**.
 - Lista de jugadas navegable (← → Inicio Fin, `F` para girar el tablero).
 - Nombre de la apertura y código ECO (base de datos de [Lichess](https://github.com/lichess-org/chess-openings), CC0),
   reconocido por posición, así que detecta transposiciones.
+- **Importar tus partidas de Lichess o Chess.com** por nombre de usuario (sin cuenta ni token).
 - Cargar FEN/PGN, exportar PGN. La posición actual queda en la URL (`#fen=...`) para compartirla.
 
 ## Uso local

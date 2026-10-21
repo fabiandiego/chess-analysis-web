@@ -2,15 +2,17 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#161512" />
     <title>Análisis de ajedrez</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♞</text></svg>" />
   </head>
   <body>
     <header class="topbar">
       <h1>♞ Análisis</h1>
-      <span id="engine-name" class="muted">Cargando motor…</span>
+      <span id="engine-name" class="muted small engine-name">Cargando motor…</span>
+      <button id="btn-reset" class="btn-reset" title="Volver a la posición inicial">↺ Nueva partida</button>
     </header>
 
     <main class="layout">
@@ -23,14 +25,17 @@
 
       <section class="panel">
         <div class="controls" role="toolbar" aria-label="Navegación">
-          <button id="btn-start" title="Inicio (Home)">⏮</button>
-          <button id="btn-prev" title="Anterior (←)">◀</button>
-          <button id="btn-next" title="Siguiente (→)">▶</button>
-          <button id="btn-end" title="Final (End)">⏭</button>
-          <button id="btn-flip" title="Girar tablero (F)">⇅</button>
+          <button id="btn-start" title="Ir al inicio (Inicio)" aria-label="Ir al inicio">⏮</button>
+          <button id="btn-prev" title="Jugada anterior (←)" aria-label="Jugada anterior">◀</button>
+          <button id="btn-next" title="Jugada siguiente (→)" aria-label="Jugada siguiente">▶</button>
+          <button id="btn-end" title="Ir al final (Fin)" aria-label="Ir al final">⏭</button>
+          <button id="btn-flip" title="Girar tablero (F)" aria-label="Girar tablero">⇅</button>
         </div>
 
-        <div class="engine-box">
+        <div id="game-banner" class="banner" hidden></div>
+        <div id="status" class="status" hidden></div>
+
+        <div class="card engine-box">
           <div class="engine-head">
             <label class="switch">
               <input id="engine-toggle" type="checkbox" checked />
@@ -43,7 +48,7 @@
             </label>
             <label>Prof.
               <select id="depth">
-                <option value="0" selected>∞</option>
+                <option value="0">∞</option>
                 <option value="16">16</option><option value="20">20</option>
                 <option value="24">24</option><option value="30">30</option>
               </select>
@@ -51,18 +56,19 @@
           </div>
           <div id="engine-stats" class="muted small">—</div>
           <ol id="pv-lines" class="pv-lines"></ol>
+          <p class="hint muted small">El color de cada línea es el de su flecha en el tablero. Toca una línea para jugar su primer movimiento.</p>
         </div>
 
-        <div id="status" class="status" hidden></div>
-
-        <div id="opening" class="opening" title="Apertura (base de datos de Lichess)" hidden>
+        <div id="opening" class="card opening" title="Apertura (base de datos de Lichess)" hidden>
           <span class="eco"></span> <span class="name"></span>
         </div>
 
-        <div id="moves" class="moves" aria-label="Movimientos"></div>
+        <div id="moves" class="card moves" aria-label="Movimientos"></div>
 
-        <details class="io">
-          <summary>Cargar / exportar</summary>
+        <section id="importer" class="card importer" aria-labelledby="importer-title"></section>
+
+        <details class="card io">
+          <summary>Pegar FEN o PGN / exportar</summary>
           <label for="fen-input">FEN</label>
           <div class="row">
             <input id="fen-input" type="text" spellcheck="false" autocomplete="off" />
@@ -73,7 +79,6 @@
           <div class="row">
             <button id="btn-pgn">Cargar PGN</button>
             <button id="btn-copy-pgn">Copiar PGN</button>
-            <button id="btn-new">Nueva partida</button>
           </div>
           <p id="io-error" class="error" hidden></p>
         </details>

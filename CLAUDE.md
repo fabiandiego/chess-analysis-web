@@ -21,6 +21,7 @@ npm run typecheck  # tsc --noEmit
 npm test           # vitest (tests/*.test.ts, entorno node)
 npm run build      # copy-engine + typecheck + vite build -> dist/
 npm run preview    # sirve dist/ para probar el build
+npm run e2e        # prueba de humo en Chromium (móvil + escritorio) sobre dist/; requiere build previo
 ```
 
 Antes de dar una tarea por terminada: `npm run typecheck && npm test && npm run build`.
@@ -37,6 +38,11 @@ src/
   ui/promotion.ts    Selector de pieza al promocionar.
   openings/openings.ts  identifyOpening(): ECO + nombre por posición (transposiciones incluidas),
                      la más profunda de la línea hasta el cursor. Libro cargado bajo demanda (chunk aparte).
+  ui/importer.ts     Panel "Mis partidas": busca por usuario y abre la partida (orienta el tablero al color del usuario).
+  import/lichess.ts  GET lichess.org/api/games/user/{u} (NDJSON, pgnInJson). parseLichessNdjson es puro.
+  import/chesscom.ts api.chess.com/pub/player/{u}/games/archives -> meses recientes EN SERIE (429 si se paraleliza).
+  import/types.ts    ImportedGame normalizado, validación de usuario, errores HTTP legibles.
+scripts/e2e-smoke.mjs    Playwright sobre dist/: sin scroll horizontal, Stockfish da líneas, sin errores JS.
 scripts/copy-engine.mjs  Elige la variante "lite-single" del paquete npm `stockfish` y escribe manifest.json.
 scripts/build-openings.mjs  data/openings/*.tsv (Lichess, CC0) -> src/openings/book.json (generado, no versionado).
 tests/               vitest.
@@ -54,30 +60,53 @@ tests/               vitest.
 3. **Rutas relativas** (`base: './'`, `new URL(..., document.baseURI)`): el sitio vive bajo
    `/<repo>/` en Pages. No usar rutas absolutas `/engine/...`.
 4. `public/engine/` y `src/openings/book.json` están en .gitignore: se generan en `postinstall`/`build`.
-5. La clave del libro de aperturas es el FEN de chess.js sin contadores (`positionKey`), igual en el
+5. **Móvil sin desbordamiento horizontal**: columnas con `minmax(0, …)` / `min-width: 0` y el override
+   de `coords.files` en style.css (chessground.base.css las desplaza 24 px fuera del tablero).
+   `npm run e2e` lo comprueba en iPhone SE (320 px) y Pixel 7.
+6. **Nunca `scrollIntoView()`** para la lista de jugadas: desplaza la página entera. Usar `keepVisibleInside()`.
+   `npm run e2e` comprueba que ▶ no mueve la página.
+7. Colores de flechas en `ARROWS` (main.ts): el mismo color marca la línea en el panel. Mantenerlos sincronizados.
+8. La clave del libro de aperturas es el FEN de chess.js sin contadores (`positionKey`), igual en el
    script y en tiempo de ejecución. No calcularla con otra librería: la casilla al paso podría diferir.
 
-## Verificación inicial (hecha, 2026-10-20)
+## Estado de verificación
 
-Comprobado con `npm install && npm run build` + prueba en Chromium headless (build servido bajo
-`/chess-analysis-web/` y `npm run dev`), sin errores de consola:
+Comprobado con `npm ci && npm run build` + Chromium headless (build servido bajo `/chess-analysis-web/`
+y `npm run dev`), sin errores de consola:
 
 - [x] Versiones: `@lichess-org/chessground ^10.5`, `chess.js ^1.4`, `stockfish ^19.0.1`, `vite ^8.3`,
-      `vitest ^5`, `typescript ^7`. `package-lock.json` versionado; CI usa `npm ci`.
+      `vitest ^5`, `typescript ^7`. `package-lock.json` versionado; CI usa `npm ci` con `cache: npm`.
 - [x] El paquete npm `chessground` está **retirado** ("no longer supported"); Lichess publica ahora
       `@lichess-org/chessground` (mismo repo y API, mismos subpaths `assets/*.css`, `api|types|draw`).
 - [x] Stockfish 19 publica `bin/stockfish-19-lite-single.{js,wasm}` (sin hash); el script lo elige
       y vacía `public/engine/` antes de copiar para no arrastrar versiones viejas a `dist/`.
-- [x] El `.js` carga su `.wasm` hermano como worker sin necesidad de `#ruta.wasm`.
-- [x] `tests/game.test.ts` pasa contra chess.js real.
+      El `.js` carga su `.wasm` hermano como worker sin necesidad de `#ruta.wasm`.
+- [x] `tests/game.test.ts` y `tests/openings.test.ts` pasan contra chess.js real.
 - [x] Manual: arrastre, promoción (selector), flechas MultiPV, barra, FEN/PGN, copiar PGN con
-      cabeceras `SetUp`/`FEN`, teclado (←, Home, End), hash `#fen=` en la URL.
+      cabeceras `SetUp`/`FEN`, teclado (←, Home, End), hash `#fen=` en la URL, nombre de apertura.
+
+Pendiente:
+
+- [ ] Prueba manual en un teléfono real (Safari iOS y Chrome Android): arrastrar piezas, promoción.
+- [ ] Importación: confirmar que Lichess y Chess.com responden con CORS desde `*.github.io` y que los
+      campos JSON reales coinciden con los usados (`players.*.user.name`, `winner`, `status`, `pgn`;
+      `white.result`, `time_class`, `rules`, `end_time`). Si Chess.com no permite CORS, la alternativa
+      sin backend es pegar el PGN manualmente; con backend, un proxy mínimo (p. ej. un Worker gratuito).
+- [ ] Chess.com pide un User-Agent identificable; desde el navegador no se puede fijar. Vigilar 403/429.
+
+## Rendimiento en móvil
+
+- En pantallas táctiles la profundidad por defecto es 20 (no infinita) y el motor se para con la pestaña oculta.
+- Stockfish 19 lite-single: ~1,8 MB de `.wasm` (17.1 lite pesaba ~7,3 MB). Carga más rápida; en Chromium
+  headless dio ~40 % menos nps que 17.1 lite (medida orientativa, no de fuerza). Para volver a 17.1:
+  `stockfish@~17.1.0`, el script de copia sirve igual.
 
 ## Hoja de ruta sugerida
 
 1. Árbol de variantes (en vez de truncar la línea principal) + exportar PGN con variantes.
 2. Análisis de partida completa: evaluar cada ply, gráfica de evaluación, detectar errores/omisiones.
-3. Guardar partidas en IndexedDB; importar desde la API pública de Lichess/Chess.com por usuario.
+3. ~~Importar desde Lichess/Chess.com~~ (hecho, v0.2). Siguiente: caché en IndexedDB, filtros por ritmo/fecha,
+   paginación (Lichess `until`, meses anteriores de Chess.com).
 4. **Motor propio** (ver abajo).
 
 ## Motor propio
