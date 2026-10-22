@@ -64,6 +64,11 @@ export const en: Messages = {
     loadPgn: 'Load PGN',
     copyPgn: 'Copy PGN',
     pgnReadError: (url, err) => `Could not read the PGN from ${url}: ${err}`,
+    pgnErrors: {
+      empty: () => 'The PGN is empty.',
+      syntax: (detail) => `Malformed PGN near "${detail}".`,
+      illegalMove: (detail) => `Illegal move in the PGN: ${detail}.`,
+    },
   },
   banner: { advance: 'use ▶ to step forward', original: 'view original ↗' },
   importer: {

@@ -76,7 +76,8 @@ Antes de dar una tarea por terminada: `npm run typecheck && npm test && npm run 
 ```
 src/
   main.ts            UI: conecta Game <-> chessground <-> motor. `sync()` es la única vía de refresco.
-  game.ts            Línea principal + cursor sobre chess.js. Sin árbol de variantes (en la hoja de ruta).
+  game.ts            Árbol de jugadas + cursor sobre chess.js. `children[0]` = continuación principal.
+  pgn.ts             parsePgn (solo sintaxis: variantes, comentarios, NAG) y writePgn. Puro. PgnError con código.
   engine/uci.ts      Parser UCI puro (sin DOM). Scores: UCI = bando que mueve; UI = blancas (toWhitePov).
   engine/engine.ts   UciEngine: Web Worker + máquina de estados idle/searching/stopping.
   ui/evalbar.ts      Barra de evaluación (curva logística tipo Lichess, cp acotado a ±1000).
@@ -94,7 +95,7 @@ src/
 scripts/e2e-smoke.mjs    Playwright sobre dist/: sin scroll horizontal, Stockfish da líneas, sin errores JS.
 scripts/copy-engine.mjs  Elige la variante "lite-single" del paquete npm `stockfish` y escribe manifest.json.
 scripts/build-openings.mjs  data/openings/*.tsv (Lichess, CC0) -> src/openings/book.json (generado, no versionado).
-tests/               vitest: game, uci, openings, import, i18n, classify.
+tests/               vitest: game, pgn, uci, openings, import, i18n, classify.
 .github/workflows/ci.yml  typecheck + test + build + e2e en cada push y PR; deploy a Pages solo desde main.
 ```
 
@@ -134,6 +135,15 @@ tests/               vitest: game, uci, openings, import, i18n, classify.
    Con profundidad 14 Stockfish lite no veía mates con sacrificio y salían valoraciones incoherentes.
    Símbolos y colores en `CLASS_STYLE`; en `customSvg` de chessground la casilla va de 0 a 100 desde su
    esquina superior izquierda (no desde el centro).
+11. **Árbol de variantes** (game.ts): cada nodo es una posición; `children[0]` es la continuación principal
+   y el resto, variantes. `play()` reutiliza una hija con la misma jugada o añade una (nunca trunca).
+   → (`forward`) sigue `children[0]` desde el cursor; End, la línea actual hasta el final. `goToNode`
+   reconstruye chess.js reproduciendo el camino (si no, se pierde la triple repetición). chess.js 1.4
+   **descarta** variantes y NAG al cargar PGN: no usar `Chess.loadPgn`/`pgn()` para la partida; usar
+   `parsePgn`/`writePgn` (pgn.ts) y validar cada SAN con chess.js en `Game.addLine`. `loadPgn` construye
+   en un borrador: si hay una jugada ilegal lanza `PgnError('illegalMove')` y la partida anterior queda
+   intacta. La valoración de jugadas va por nodo (`reviewOf(node)`), así que también marca variantes.
+   Comentarios de Chess.com: se quitan los comandos `[%clk …]`/`[%eval …]` (`cleanComment`).
 
 ## Estado de verificación
 
@@ -151,7 +161,9 @@ y `npm run dev`), sin errores de consola:
 - [x] Manual: arrastre, promoción (selector), flechas MultiPV, barra, FEN/PGN, copiar PGN con
       cabeceras `SetUp`/`FEN`, teclado (←, Home, End), hash `#fen=` en la URL, nombre de apertura,
       cambio de idioma es/en/ru (persiste al recargar; sin restos en español en ru), valoración de
-      jugadas (Opera de Morphy: 9…b5 error, 15.Bxd7+ mejor; 3…Nf6?? en el mate del pastor, error grave).
+      jugadas (Opera de Morphy: 9…b5 error, 15.Bxd7+ mejor; 3…Nf6?? en el mate del pastor, error grave),
+      árbol de variantes (cargar PGN con variantes anidadas y comentarios, clic y ← → dentro de una
+      variante, crear una jugando en el tablero, exportar; sin scroll horizontal a 320 px).
 
 Pendiente:
 
@@ -180,9 +192,8 @@ Pendiente:
 
 Orden propuesto; confirmar alcance con el autor antes de empezar cada uno.
 
-1. **Árbol de variantes**: jugar otra jugada en mitad de la partida crea una variante en vez de truncar
-   la línea; navegar y promover variantes; exportar PGN con variantes. Afecta a `game.ts` (hoy línea +
-   cursor), a la lista de jugadas y a `fensToCursor`/`positions` (aperturas y valoración).
+1. ~~**Árbol de variantes**~~ (hecho, sin publicar): crear y navegar variantes, PGN con variantes y
+   comentarios. Pendiente si el autor lo pide: promover a principal, borrar variante, ↑↓ entre variantes.
 2. **Análisis de partida completa**: valorar todas las jugadas en segundo plano (hoy solo las visitadas),
    gráfica de evaluación, precisión por jugador. `review/classify.ts` ya existe; faltan "brillante",
    "gran jugada" y "oportunidad perdida" (detectar sacrificios y jugadas únicas).
@@ -191,6 +202,9 @@ Orden propuesto; confirmar alcance con el autor antes de empezar cada uno.
 4. **Motor propio** (ver abajo), con selector de motor y partidas motor contra motor.
 
 Deuda (ver "Pendiente" arriba): CORS de las APIs de importación, revisión nativa de en/ru.
+Idea pequeña: "libro" solo marca posiciones con nombre en la base de Lichess; las intermedias de una línea
+con nombre (p. ej. 4.Nxd4 en la Siciliana abierta) salen sin "≡". Guardar también esas posiciones en
+`book.json` (build-openings) las marcaría como hace chess.com.
 
 ## Motor propio
 

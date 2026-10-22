@@ -71,6 +71,11 @@ export const ru: Messages = {
     loadPgn: 'Загрузить PGN',
     copyPgn: 'Копировать PGN',
     pgnReadError: (url, err) => `Не удалось прочитать PGN из ${url}: ${err}`,
+    pgnErrors: {
+      empty: () => 'PGN пуст.',
+      syntax: (detail) => `Ошибка в PGN рядом с «${detail}».`,
+      illegalMove: (detail) => `Недопустимый ход в PGN: ${detail}.`,
+    },
   },
   banner: { advance: 'нажимайте ▶, чтобы идти дальше', original: 'оригинал ↗' },
   importer: {

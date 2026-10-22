@@ -8,7 +8,8 @@ import '@lichess-org/chessground/assets/chessground.brown.css';
 import '@lichess-org/chessground/assets/chessground.cburnett.css';
 import './style.css';
 
-import { Game, uciToSan, type GameStatus } from './game';
+import { Game, uciToSan, type GameNode } from './game';
+import { PgnError } from './pgn';
 import { createStockfish, type AnalysisRequest, type UciEngine } from './engine/engine';
 import type { BestMove } from './engine/uci';
 import { formatScore, toWhitePov, type InfoLine, type Score } from './engine/uci';
@@ -268,23 +269,22 @@ function renderAnalysis(): void {
 
 // ---------------------------------------------------------------- valoración de jugadas
 
-/** Clasificación de la jugada `ply` (1..n) si ya hay datos suficientes; null si aún no. */
-function reviewOf(ply: number, positions: readonly string[], end: GameStatus | null): Classification | null {
-  const mv = game.moves[ply - 1];
-  const beforeFen = positions[ply - 1];
-  const afterFen = positions[ply];
-  if (!mv || !beforeFen || !afterFen) return null;
+/** Clasificación de la jugada que lleva a `node` si ya hay datos suficientes; null si aún no. */
+function reviewOf(node: GameNode): Classification | null {
+  const parent = node.parent;
+  if (!parent || !node.uci) return null;
   // Libro: no necesita motor (chess.com también las marca así).
-  if (openingBook && positionKey(afterFen) in openingBook) return { cls: 'book', loss: 0 };
-  const before = evals.get(positionKey(beforeFen));
-  if (!before || !isDeepEnough(beforeFen, before)) return null;
-  if (ply === positions.length - 1 && end) {
+  if (openingBook && positionKey(node.fen) in openingBook) return { cls: 'book', loss: 0 };
+  const before = evals.get(positionKey(parent.fen));
+  if (!before || !isDeepEnough(parent.fen, before)) return null;
+  const end = game.statusAt(node);
+  if (end) {
     const after = end === 'whiteMates' || end === 'blackMates' ? 'checkmate' : 'draw';
-    return classifyMove({ before, after, played: mv.uci });
+    return classifyMove({ before, after, played: node.uci });
   }
-  const after = evals.get(positionKey(afterFen));
-  if (!after || !isDeepEnough(afterFen, after)) return null;
-  return classifyMove({ before, after, played: mv.uci });
+  const after = evals.get(positionKey(node.fen));
+  if (!after || !isDeepEnough(node.fen, after)) return null;
+  return classifyMove({ before, after, played: node.uci });
 }
 
 const isDeepEnough = (fen: string, e: PositionEval) => e.depth >= REVIEW_DEPTH || reviewDone.has(positionKey(fen));
@@ -292,14 +292,13 @@ const isDeepEnough = (fen: string, e: PositionEval) => e.depth >= REVIEW_DEPTH |
 /** Tarjeta "e5 es una imprecisión" + insignia en la casilla de destino. Devuelve la insignia. */
 function renderReview(): DrawShape | null {
   const box = $('review');
-  const ply = game.ply;
-  const mv = game.moves[ply - 1];
-  if (!mv) {
+  const mv = game.node;
+  const parent = mv.parent;
+  if (!parent || !mv.san || !mv.uci) {
     box.hidden = true;
     return null;
   }
-  const positions = game.positions;
-  const r = reviewOf(ply, positions, game.endStatus());
+  const r = reviewOf(mv);
   box.hidden = false;
   const icon = box.querySelector<HTMLElement>('.review-icon')!;
   const head = box.querySelector<HTMLElement>('.review-head')!;
@@ -316,9 +315,9 @@ function renderReview(): DrawShape | null {
   icon.style.background = style.color;
   head.textContent = `${mv.san} ${t.review.verdict[r.cls]}`;
 
-  const beforeFen = positions[ply - 1]!;
+  const beforeFen = parent.fen;
   const before = evals.get(positionKey(beforeFen));
-  const after = evals.get(positionKey(positions[ply]!));
+  const after = evals.get(positionKey(mv.fen));
   const parts: string[] = [];
   if (before?.best && r.cls !== 'best' && r.cls !== 'book') {
     const bestSan = uciToSan(beforeFen, before.best);
@@ -328,7 +327,7 @@ function renderReview(): DrawShape | null {
     const stm = (fen: string) => (fen.split(' ')[1] === 'b' ? 'b' : 'w');
     parts.push(t.review.evalChange(
       formatScore(toWhitePov(before.score, stm(beforeFen))),
-      formatScore(toWhitePov(after.score, stm(positions[ply]!))),
+      formatScore(toWhitePov(after.score, stm(mv.fen))),
     ));
   }
   detail.textContent = parts.join(' · ');
@@ -349,10 +348,9 @@ function renderReview(): DrawShape | null {
 
 /** Símbolo junto a cada jugada ya valorada en la lista. */
 function renderMarks(): void {
-  const positions = game.positions;
-  const end = game.endStatus();
   for (const b of $('moves').querySelectorAll<HTMLButtonElement>('.mv')) {
-    const r = reviewOf(Number(b.dataset.ply), positions, end);
+    const node = game.nodeById(Number(b.dataset.node));
+    const r = node ? reviewOf(node) : null;
     const stamp = r ? `${r.cls}:${lang}` : '';
     if (b.dataset.stamp === stamp) continue; // sin cambios: no tocar el DOM
     b.dataset.stamp = stamp;
@@ -387,33 +385,108 @@ function formatNodes(n?: number): string {
 
 // ---------------------------------------------------------------- lista de jugadas
 
+/**
+ * Lista de jugadas al estilo de Lichess: la línea principal en dos columnas
+ * (número, blancas, negras) y, cuando una jugada tiene variantes o
+ * comentario, un bloque a todo el ancho con ellos; dentro, las variantes van
+ * en texto corrido con las anidadas entre paréntesis.
+ */
 function renderMoves(): void {
   const box = $('moves');
   const frag = document.createDocumentFragment();
-  let n = game.firstMoveNumber;
-  let white = !game.startsWithBlack;
+  const root = game.root;
+  if (root.comment) frag.append(interruptEl([commentEl(root.comment)]));
 
-  game.moves.forEach((p, i) => {
-    if (white || i === 0) {
-      const num = document.createElement('span');
-      num.className = 'num';
-      num.textContent = `${n}.`;
-      frag.append(num);
-      // Partida que empieza con negras: hueco en la columna de blancas.
-      if (!white) frag.append(Object.assign(document.createElement('span'), { textContent: '…', className: 'num' }));
+  let prev = root;
+  let interrupted = true; // tras un bloque (o al empezar) la jugada de negras necesita "N. …"
+  for (let node = root.children[0]; node; prev = node, node = node.children[0]) {
+    const white = sideToMove(prev) === 'w';
+    if (white) frag.append(numEl(`${moveNo(prev)}.`));
+    else if (interrupted) frag.append(numEl(`${moveNo(prev)}.`), fillerEl());
+    frag.append(moveEl(node));
+    interrupted = false;
+
+    const alts = prev.children.slice(1);
+    if (node.comment || alts.length) {
+      if (white) frag.append(fillerEl()); // hueco en la columna de negras
+      const parts: Node[] = [];
+      if (node.comment) parts.push(commentEl(node.comment));
+      for (const alt of alts) {
+        const v = document.createElement('div');
+        v.className = 'variation';
+        appendLine(v, alt, prev);
+        parts.push(v);
+      }
+      frag.append(interruptEl(parts));
+      interrupted = true;
     }
-    const b = document.createElement('button');
-    b.className = 'mv' + (i + 1 === game.ply ? ' active' : '');
-    b.dataset.ply = String(i + 1);
-    b.append(Object.assign(document.createElement('span'), { textContent: p.san }));
-    b.append(Object.assign(document.createElement('span'), { className: 'cls' }));
-    b.addEventListener('click', () => { game.goTo(i + 1); sync(); });
-    frag.append(b);
-    if (!white) n++;
-    white = !white;
-  });
+  }
   box.replaceChildren(frag);
+  renderMarks();
   keepVisibleInside(box, box.querySelector<HTMLElement>('.active'));
+}
+
+/** Línea en texto corrido desde `first` (hija de `parent`), con sus variantes anidadas entre paréntesis. */
+function appendLine(el: HTMLElement, first: GameNode, parent: GameNode): void {
+  let prev = parent;
+  let needNumber = true;
+  for (let node: GameNode | undefined = first; node; prev = node, node = node.children[0]) {
+    if (node.commentBefore) {
+      el.append(commentEl(node.commentBefore));
+      needNumber = true;
+    }
+    // Número y jugada juntos: que el salto de línea no los separe.
+    const unit = Object.assign(document.createElement('span'), { className: 'unit' });
+    if (sideToMove(prev) === 'w') unit.append(`${moveNo(prev)}. `);
+    else if (needNumber) unit.append(`${moveNo(prev)}… `);
+    unit.append(moveEl(node));
+    el.append(unit, ' ');
+    needNumber = false;
+    if (node.comment) {
+      el.append(commentEl(node.comment), ' ');
+      needNumber = true;
+    }
+    // Alternativas a `node` (la primera jugada de la línea las pinta quien llama).
+    if (node !== first && prev.children[0] === node && prev.children.length > 1) {
+      for (const alt of prev.children.slice(1)) {
+        const nested = document.createElement('span');
+        nested.className = 'subvariation';
+        nested.append('(');
+        appendLine(nested, alt, prev);
+        nested.lastChild?.remove(); // espacio final antes del ")"
+        nested.append(') ');
+        el.append(nested);
+      }
+      needNumber = true;
+    }
+  }
+}
+
+/** Glifos de los NAG 1–6 (los demás no se muestran, pero se conservan en el PGN). */
+const NAG_TEXT: Record<number, string> = { 1: '!', 2: '?', 3: '!!', 4: '??', 5: '!?', 6: '?!' };
+
+function moveEl(node: GameNode): HTMLButtonElement {
+  const b = document.createElement('button');
+  b.className = 'mv' + (node === game.node ? ' active' : '');
+  b.dataset.node = String(node.id);
+  b.append(Object.assign(document.createElement('span'), {
+    textContent: node.san! + node.nags.map((n) => NAG_TEXT[n] ?? '').join(''),
+  }));
+  b.append(Object.assign(document.createElement('span'), { className: 'cls' }));
+  b.addEventListener('click', () => { game.goToNode(node); sync(); });
+  return b;
+}
+
+const sideToMove = (n: GameNode) => (n.fen.split(' ')[1] === 'b' ? 'b' : 'w');
+const moveNo = (n: GameNode) => Number(n.fen.split(' ')[5] ?? 1);
+const numEl = (text: string) => Object.assign(document.createElement('span'), { className: 'num', textContent: text });
+const fillerEl = () => Object.assign(document.createElement('span'), { className: 'filler', textContent: '…' });
+const commentEl = (text: string) => Object.assign(document.createElement('span'), { className: 'comment', textContent: text });
+function interruptEl(parts: Node[]): HTMLElement {
+  const el = document.createElement('div');
+  el.className = 'interrupt';
+  el.append(...parts);
+  return el;
 }
 
 /**
@@ -444,11 +517,15 @@ function renderOpening(): void {
 
 // ---------------------------------------------------------------- controles
 
-const nav = (ply: number) => { game.goTo(ply); sync(); };
-$('btn-start').onclick = () => nav(0);
-$('btn-prev').onclick = () => nav(game.ply - 1);
-$('btn-next').onclick = () => nav(game.ply + 1);
-$('btn-end').onclick = () => nav(game.length);
+const nav = (move: () => void) => () => { move(); sync(); };
+const goStart = nav(() => game.toStart());
+const goBack = nav(() => game.back());
+const goForward = nav(() => game.forward());
+const goEnd = nav(() => game.toEnd());
+$('btn-start').onclick = goStart;
+$('btn-prev').onclick = goBack;
+$('btn-next').onclick = goForward;
+$('btn-end').onclick = goEnd;
 $('btn-flip').onclick = flip;
 
 function flip(): void {
@@ -461,10 +538,10 @@ document.addEventListener('keydown', (e) => {
   const tag = (e.target as HTMLElement).tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
   const actions: Record<string, () => void> = {
-    ArrowLeft: () => nav(game.ply - 1),
-    ArrowRight: () => nav(game.ply + 1),
-    Home: () => nav(0),
-    End: () => nav(game.length),
+    ArrowLeft: goBack,
+    ArrowRight: goForward,
+    Home: goStart,
+    End: goEnd,
     f: flip,
   };
   const act = actions[e.key];
@@ -483,8 +560,14 @@ function guarded(fn: () => void): void {
     sync();
   } catch (err) {
     ioError.hidden = false;
-    ioError.textContent = err instanceof Error ? err.message : String(err);
+    ioError.textContent = errorText(err);
   }
+}
+
+/** PgnError trae código (se traduce); el resto (FEN inválido de chess.js) se muestra tal cual. */
+function errorText(err: unknown): string {
+  if (err instanceof PgnError) return t.io.pgnErrors[err.code](err.detail);
+  return err instanceof Error ? err.message : String(err);
 }
 $('btn-fen').onclick = () => guarded(() => game.loadFen(($('fen-input') as HTMLInputElement).value));
 $('btn-pgn').onclick = () => guarded(() => game.loadPgn(($('pgn-input') as HTMLTextAreaElement).value));
@@ -531,10 +614,10 @@ const importer = mountImporter($('importer'), {
       game.loadPgn(g.pgn);
     } catch (err) {
       ioError.hidden = false;
-      ioError.textContent = t.io.pgnReadError(g.url, err instanceof Error ? err.message : String(err));
+      ioError.textContent = t.io.pgnReadError(g.url, errorText(err));
       return;
     }
-    game.goTo(0); // revisión desde el principio
+    game.toStart(); // revisión desde el principio
     if (userColor) orientation = userColor;
     ioError.hidden = true;
     setBanner(g);

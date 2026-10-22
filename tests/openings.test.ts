@@ -40,7 +40,7 @@ describe('Aperturas', () => {
 
   it('sigue al cursor, no al final de la partida', () => {
     const g = play('e4', 'e5', 'Nf3', 'Nc6', 'Bb5', 'a6');
-    g.goTo(5);
+    g.back(); // ply 5
     expect(opening(g)).toMatchObject({ eco: 'C60', name: 'Ruy Lopez' });
   });
 

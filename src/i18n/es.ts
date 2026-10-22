@@ -69,6 +69,11 @@ export const es = {
     loadPgn: 'Cargar PGN',
     copyPgn: 'Copiar PGN',
     pgnReadError: (url: string, err: string) => `No se pudo leer el PGN de ${url}: ${err}`,
+    pgnErrors: {
+      empty: (_detail: string) => 'El PGN está vacío.',
+      syntax: (detail: string) => `PGN mal formado cerca de «${detail}».`,
+      illegalMove: (detail: string) => `Jugada ilegal en el PGN: ${detail}.`,
+    },
   },
   banner: { advance: 'usa ▶ para avanzar', original: 'ver original ↗' },
   importer: {

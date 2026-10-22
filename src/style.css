@@ -171,6 +171,18 @@ a { color: var(--accent); }
 }
 .moves .mv:hover { background: var(--surface-2); }
 .moves .mv.active { background: var(--accent); color: #fff; }
+.moves .filler { color: var(--muted); padding: 4px 6px; }
+/* Variantes y comentarios: bloque a todo el ancho, texto corrido (estilo Lichess). */
+.moves .interrupt {
+  grid-column: 1 / -1; min-width: 0; margin: 2px 0; padding: 4px 8px;
+  border-left: 2px solid var(--border); font-size: 13px; color: var(--muted); overflow-wrap: anywhere;
+}
+.moves .interrupt .variation + .variation, .moves .interrupt .comment + .variation { margin-top: 2px; }
+.moves .interrupt .mv { display: inline; padding: 1px 3px; color: var(--text); }
+.moves .interrupt .mv.active { color: #fff; }
+.moves .interrupt .unit { white-space: nowrap; }
+.moves .comment { font-style: italic; color: var(--muted); }
+.moves .interrupt > .comment { display: block; }
 
 /* ------------ importar ------------ */
 .importer h2 { font-size: 16px; margin: 0 0 4px; }

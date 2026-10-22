@@ -5,6 +5,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); v
 
 ## [Sin publicar]
 
+### Añadido
+- Árbol de variantes: jugar otra jugada en mitad de la partida crea una variante en vez de truncar; la
+  lista de jugadas muestra variantes y comentarios (estilo Lichess) y se navega con clic y ← →.
+- PGN con variantes, comentarios y NAG al cargar y al exportar (lector y escritor propios: chess.js los
+  descarta). Los errores de PGN se muestran traducidos (vacío, mal formado, jugada ilegal).
+- La valoración de jugadas también marca las jugadas de las variantes.
+
 ### Proyecto
 - CI: acciones de GitHub en versiones con Node 24 (`checkout` v7, `setup-node` v7,
   `upload-pages-artifact` v5, `deploy-pages` v5); GitHub forzaba las anteriores (Node 20) a Node 24.

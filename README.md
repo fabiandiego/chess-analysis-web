@@ -38,7 +38,9 @@ Sin cuentas, sin servidor, sin suscripción.
 - Interfaz en **español, inglés o ruso** (selector en la cabecera; por defecto, el idioma del navegador).
 - **Importar tus partidas de Lichess o Chess.com** por nombre de usuario (sin cuenta ni token).
 - Lista de jugadas navegable (← → Inicio Fin, `F` para girar el tablero) y botón **↺ Nueva partida**.
-- Cargar FEN/PGN y exportar PGN. La posición actual queda en la URL (`#fen=...`) para compartirla.
+- **Árbol de variantes**: jugar otra jugada en mitad de la partida crea una variante (no borra nada); la lista
+  las muestra como Lichess y se navega por ellas con clic y ← →.
+- Cargar y exportar PGN **con variantes y comentarios** (y FEN). La posición actual queda en la URL (`#fen=...`).
 - Diseño adaptado a móvil; el motor se para con la pestaña en segundo plano.
 
 ## Uso local
@@ -66,7 +68,8 @@ Antes de subir cambios: `npm run typecheck && npm test && npm run build`.
 ```
 src/
   main.ts              UI: conecta partida, tablero y motor
-  game.ts              Línea principal + cursor (sobre chess.js)
+  game.ts              Árbol de jugadas (variantes) + cursor (sobre chess.js)
+  pgn.ts               Lectura y escritura de PGN con variantes, comentarios y NAG
   engine/              Cliente UCI (Web Worker) y parser de `info`
   openings/            Identificación de la apertura (libro generado en build)
   review/              Clasificación de jugadas (puntos esperados, umbrales de chess.com)
