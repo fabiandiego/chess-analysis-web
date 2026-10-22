@@ -162,9 +162,10 @@ Pendiente:
       sin backend es pegar el PGN manualmente; con backend, un proxy mínimo (p. ej. un Worker gratuito).
 - [ ] Chess.com pide un User-Agent identificable; desde el navegador no se puede fijar. Vigilar 403/429.
 - [ ] Revisión de las traducciones por hablantes nativos (`src/i18n/en.ts`, `src/i18n/ru.ts`).
-- [ ] CI: GitHub avisa de que `actions/checkout@v4`, `setup-node@v4`, `upload-artifact@v4` (dentro de
-      `upload-pages-artifact@v3`) y `deploy-pages@v4` usan Node 20 y los fuerza a Node 24. Funciona,
-      pero conviene subir a las versiones mayores que usen Node 24.
+- [x] CI en Node 24 (2026-10-22): `checkout` v7, `setup-node` v7, `upload-pages-artifact` v5 (la v4 aún
+      fijaba `upload-artifact` en node20) y `deploy-pages` v5. Revisados sus cambios: v7 de checkout solo
+      restringe forks en `pull_request_target`; setup-node v5+ activa caché sola (aquí `cache: npm` explícito);
+      upload-pages-artifact v4+ excluye ficheros con punto (`dist/` no tiene).
 
 ## Rendimiento en móvil
 
@@ -189,8 +190,7 @@ Orden propuesto; confirmar alcance con el autor antes de empezar cada uno.
    (Lichess `until`, meses anteriores de Chess.com). (La importación básica ya está en 1.0.0.)
 4. **Motor propio** (ver abajo), con selector de motor y partidas motor contra motor.
 
-Deuda (ver "Pendiente" arriba): acciones de GitHub con Node 24, CORS de las APIs de importación,
-revisión nativa de en/ru.
+Deuda (ver "Pendiente" arriba): CORS de las APIs de importación, revisión nativa de en/ru.
 
 ## Motor propio
 

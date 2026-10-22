@@ -5,6 +5,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/); v
 
 ## [Sin publicar]
 
+### Proyecto
+- CI: acciones de GitHub en versiones con Node 24 (`checkout` v7, `setup-node` v7,
+  `upload-pages-artifact` v5, `deploy-pages` v5); GitHub forzaba las anteriores (Node 20) a Node 24.
+
 ## [1.0.0] — 2026-10-21
 
 Primera versión publicada en https://fabiandiego.github.io/chess-analysis-web/.
