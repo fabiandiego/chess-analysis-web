@@ -94,8 +94,9 @@ Los nombres de apertura se muestran en inglés en todos los idiomas: la base de 
 
 ## Versiones
 
-- **v1** (`main`, etiqueta `v1.0.0`): la versión publicada. Cambios en [`CHANGELOG.md`](CHANGELOG.md).
-- **v2** (rama `v2`): en desarrollo; no se publica hasta hacer merge a `main`.
+- **1.x** (`main`): versión publicada y en desarrollo; la última cerrada es la 1.0.0. Cambios en
+  [`CHANGELOG.md`](CHANGELOG.md).
+- La rama `v2` está en pausa: el desarrollo sigue en `main`.
 
 ## Despliegue en GitHub Pages
 

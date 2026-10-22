@@ -14,17 +14,18 @@ esa puerta abierta (ver "Motor propio" abajo).
 
 ## Versiones y ramas
 
-- `main` = **v1** publicada (etiqueta `v1.0.0`). Cada push a `main` despliega en GitHub Pages; solo
-  arreglos de v1, siempre por PR. Al arreglar algo en `main`, llevarlo también a `v2` (merge `main` → `v2`).
-- `v2` = **versión 2 en desarrollo** (`package.json` 2.0.0-dev.N). Los PR de v2 van con base `v2`; su CI
-  corre en cada push pero no publica. v2 sale con un PR `v2` → `main` y la etiqueta `v2.0.0`.
+- `main` = **desarrollo activo y versión publicada (1.x)**. Todo el trabajo va a `main` por PR; cada push
+  despliega en GitHub Pages. Al cerrar una versión: número en `package.json` (1.1.0, 1.2.0…), fecha en
+  el CHANGELOG y etiqueta `v1.x.0`.
+- `v2` = **en pausa** (decisión del autor, 2026-10-22). Solo contiene el arranque: versión 2.0.0-dev.0,
+  CI también en push a `v2` y un plan que ahora es la hoja de ruta de 1.x. No trabajar en ella salvo que
+  el autor lo pida; si se retoma, primero merge `main` → `v2`.
 - `CHANGELOG.md`: cada PR añade su línea en "Sin publicar"; al cerrar versión se le pone número y fecha.
 
-## Estado y notas para la próxima sesión (actualizado 2026-10-21)
+## Estado y notas para la próxima sesión (actualizado 2026-10-22)
 
-**Dónde se quedó:** v1.0.0 cerrada y publicada (`main` = `0b21754`). Rama `v2` creada desde ahí
-(`177901a`: versión 2.0.0-dev.0, CI sin despliegue, plan abajo); todavía sin trabajo de v2.
-El trabajo nuevo va en la rama `v2` (leer su CLAUDE.md), con PR de base `v2`.
+**Dónde se quedó:** v1.0.0 cerrada y publicada (commit `0b21754`). La rama `v2` está **en pausa**: el
+desarrollo sigue en `main` como versiones 1.x (siguiente: 1.1.0). Trabajo nuevo: PR con base `main`.
 
 **Pendiente inmediato:**
 1. **Etiqueta/release `v1.0.0` sin crear en GitHub**: el proxy del entorno de Claude rechaza `git push`
@@ -32,12 +33,12 @@ El trabajo nuevo va en la rama `v2` (leer su CLAUDE.md), con PR de base `v2`.
    Releases → Draft a new release → tag `v1.0.0` (crear al publicar) → target commit `0b21754`
    ("Versión 1.0.0") → pegar el apartado 1.0.0 de `CHANGELOG.md`. Alternativa propuesta y no hecha:
    un workflow de release que cree etiqueta y release desde Actions (decidir con el autor).
-2. **Elegir la primera tarea de v2** (ver "Versión 2 — plan"). No se ha empezado ninguna.
+2. **Elegir la siguiente tarea de 1.x** (ver "Hoja de ruta"). No se ha empezado ninguna.
 
 **Cómo trabaja el autor:** respuestas técnicas y basadas en datos; cuestionar lo que pide cuando choque
 con medidas (p. ej. profundidad 10 para valorar → se dejó 10 para el análisis en vivo y 18 para la
-valoración). Flujo habitual: rama de trabajo → commit → PR → push fast-forward a la rama base (antes
-`main`, ahora `v2`) **tras confirmarlo con él** → comprobar el CI del push.
+valoración). Flujo habitual: rama de trabajo → commit → PR → push fast-forward a `main` **tras
+confirmarlo con él** → comprobar el CI del push (y que se desplegó).
 
 **Entorno de Claude Code en la web (lo que se aprendió):**
 - El proxy bloquea `lichess.org`, `api.chess.com` y `*.github.io`: no se puede probar la importación
@@ -75,7 +76,7 @@ Antes de dar una tarea por terminada: `npm run typecheck && npm test && npm run 
 ```
 src/
   main.ts            UI: conecta Game <-> chessground <-> motor. `sync()` es la única vía de refresco.
-  game.ts            Línea principal + cursor sobre chess.js. Sin árbol de variantes (llega en v2).
+  game.ts            Línea principal + cursor sobre chess.js. Sin árbol de variantes (en la hoja de ruta).
   engine/uci.ts      Parser UCI puro (sin DOM). Scores: UCI = bando que mueve; UI = blancas (toWhitePov).
   engine/engine.ts   UciEngine: Web Worker + máquina de estados idle/searching/stopping.
   ui/evalbar.ts      Barra de evaluación (curva logística tipo Lichess, cp acotado a ±1000).
@@ -174,16 +175,22 @@ Pendiente:
   headless dio ~40 % menos nps que 17.1 lite (medida orientativa, no de fuerza). Para volver a 17.1:
   `stockfish@~17.1.0`, el script de copia sirve igual.
 
-## Hoja de ruta sugerida
+## Hoja de ruta (1.x)
 
-1. Árbol de variantes (en vez de truncar la línea principal) + exportar PGN con variantes.
-2. Análisis de partida completa: evaluar cada ply en segundo plano (hoy solo se valoran las jugadas
-   visitadas), gráfica de evaluación, resumen de precisión por jugador. La clasificación ya existe
-   (`review/classify.ts`); faltan "brillante", "gran jugada" y "oportunidad perdida", que requieren
-   detectar sacrificios y jugadas únicas.
-3. ~~Importar desde Lichess/Chess.com~~ (hecho, v1.0.0). Siguiente: caché en IndexedDB, filtros por ritmo/fecha,
-   paginación (Lichess `until`, meses anteriores de Chess.com).
-4. **Motor propio** (ver abajo).
+Orden propuesto; confirmar alcance con el autor antes de empezar cada uno.
+
+1. **Árbol de variantes**: jugar otra jugada en mitad de la partida crea una variante en vez de truncar
+   la línea; navegar y promover variantes; exportar PGN con variantes. Afecta a `game.ts` (hoy línea +
+   cursor), a la lista de jugadas y a `fensToCursor`/`positions` (aperturas y valoración).
+2. **Análisis de partida completa**: valorar todas las jugadas en segundo plano (hoy solo las visitadas),
+   gráfica de evaluación, precisión por jugador. `review/classify.ts` ya existe; faltan "brillante",
+   "gran jugada" y "oportunidad perdida" (detectar sacrificios y jugadas únicas).
+3. **Partidas guardadas**: caché en IndexedDB; importación con filtros por ritmo/fecha y paginación
+   (Lichess `until`, meses anteriores de Chess.com). (La importación básica ya está en 1.0.0.)
+4. **Motor propio** (ver abajo), con selector de motor y partidas motor contra motor.
+
+Deuda (ver "Pendiente" arriba): acciones de GitHub con Node 24, CORS de las APIs de importación,
+revisión nativa de en/ru.
 
 ## Motor propio
 
