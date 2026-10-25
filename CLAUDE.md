@@ -22,18 +22,25 @@ esa puerta abierta (ver "Motor propio" abajo).
   el autor lo pida; si se retoma, primero merge `main` → `v2`.
 - `CHANGELOG.md`: cada PR añade su línea en "Sin publicar"; al cerrar versión se le pone número y fecha.
 
-## Estado y notas para la próxima sesión (actualizado 2026-10-22)
+## Estado y notas para la próxima sesión (actualizado 2026-10-25)
 
-**Dónde se quedó:** v1.0.0 cerrada y publicada (commit `0b21754`). La rama `v2` está **en pausa**: el
-desarrollo sigue en `main` como versiones 1.x (siguiente: 1.1.0). Trabajo nuevo: PR con base `main`.
+**Dónde se quedó:** `main` = `a323213`, publicado. Desde v1.0.0 (`0b21754`) entraron, sin versión aún
+(en "Sin publicar" del CHANGELOG): CI en Node 24 (PR #9) y **árbol de variantes + PGN con variantes**
+(PR #10). La rama `v2` sigue en pausa. Trabajo nuevo: PR con base `main`.
 
 **Pendiente inmediato:**
-1. **Etiqueta/release `v1.0.0` sin crear en GitHub**: el proxy del entorno de Claude rechaza `git push`
-   de etiquetas (HTTP 403; ramas sí) y no hay herramienta de GitHub para crear releases. Hacerlo a mano:
-   Releases → Draft a new release → tag `v1.0.0` (crear al publicar) → target commit `0b21754`
-   ("Versión 1.0.0") → pegar el apartado 1.0.0 de `CHANGELOG.md`. Alternativa propuesta y no hecha:
-   un workflow de release que cree etiqueta y release desde Actions (decidir con el autor).
-2. **Elegir la siguiente tarea de 1.x** (ver "Hoja de ruta"). No se ha empezado ninguna.
+1. **Etiqueta `v1.0.0`**: el proxy del entorno de Claude rechaza `git push` de etiquetas (HTTP 403;
+   ramas sí; reintentado el 2026-10-25). El autor decidió crearla **a mano** (no un workflow de release):
+   Releases → Draft a new release → tag `v1.0.0` → target `0b21754` → notas = apartado 1.0.0 del
+   CHANGELOG. Comprobar si ya existe con `git ls-remote --tags origin`.
+2. **¿Cerrar 1.1.0?** Lo que hay en "Sin publicar" (variantes, CI) justifica una 1.1.0 cuando el autor
+   quiera: número en package.json, fecha en el CHANGELOG y etiqueta (a mano, ver punto 1).
+3. **Siguiente tarea**: mejora pequeña del "libro" (posiciones intermedias, ver Hoja de ruta) o el
+   punto 2 de la hoja de ruta (análisis de partida completa). Confirmar alcance con el autor.
+
+**Otros restos:** vista previa privada del árbol de variantes en https://claude.ai/artifact/JMr2wD7KDWQ8t6zJfQQFF2
+(ya redundante; borrarla si el autor lo pide). En GitHub hay una rama `ccr-b2a328da-3vjjiz` de otra
+sesión, idéntica a `main` el 2026-10-25 (sin trabajo propio).
 
 **Cómo trabaja el autor:** respuestas técnicas y basadas en datos; cuestionar lo que pide cuando choque
 con medidas (p. ej. profundidad 10 para valorar → se dejó 10 para el análisis en vivo y 18 para la
@@ -192,7 +199,7 @@ Pendiente:
 
 Orden propuesto; confirmar alcance con el autor antes de empezar cada uno.
 
-1. ~~**Árbol de variantes**~~ (hecho, sin publicar): crear y navegar variantes, PGN con variantes y
+1. ~~**Árbol de variantes**~~ (hecho, en `main` desde PR #10; aún sin número de versión): crear y navegar variantes, PGN con variantes y
    comentarios. Pendiente si el autor lo pide: promover a principal, borrar variante, ↑↓ entre variantes.
 2. **Análisis de partida completa**: valorar todas las jugadas en segundo plano (hoy solo las visitadas),
    gráfica de evaluación, precisión por jugador. `review/classify.ts` ya existe; faltan "brillante",
